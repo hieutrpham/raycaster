@@ -1,6 +1,6 @@
 # Raycaster in Raylib
 
-[raycaster](./raycaster.png)
+![raycaster](./raycaster.png)
 
 # Build
 ```bash
