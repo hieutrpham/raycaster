@@ -1,8 +1,6 @@
 #include "raylib.h"
-#include "raymath.h"
 #include <stdint.h>
 #include <math.h>
-#include <stdio.h>
 
 #define player_size 20
 #define WIDTH 800
@@ -21,12 +19,12 @@
 int map[] =
 {
 	1,1,1,1,1,1,1,1,
-	1,0,1,0,0,0,0,1,
 	1,0,0,0,1,0,0,1,
+	1,0,1,0,1,0,0,1,
+	1,0,0,0,1,0,0,1,
+	1,0,0,0,0,0,0,1,
+	1,0,1,0,0,1,0,1,
 	1,0,1,0,0,0,0,1,
-	1,0,0,0,0,1,0,1,
-	1,0,1,0,0,0,0,1,
-	1,0,0,1,0,0,0,1,
 	1,1,1,1,1,1,1,1,
 };
 
@@ -41,14 +39,14 @@ typedef struct
 
 void drawRays(player_t *p)
 {
-	int yo, xo;
+	float yo, xo;
 	float ra = p->angle - 30.0f * DR;
 	// TraceLog(LOG_INFO, "player angle: %f", p->angle);
 	for (int r = 0; r < 60; r++, ra += DR)
 	{
 		int dof = 0;
 		float aTan = -1/tanf(ra);
-		float hx = p->x, hy = p->y;
+		float hx, hy;
 		if (ra < 0)
 			ra += 2*PI;
 		if (ra > 2*PI)
@@ -57,9 +55,9 @@ void drawRays(player_t *p)
 		// NOTE: find horizontal intersection
 		// looking up
 		if (ra > PI) {
-			hy = floorf(p->y / cell_size) * cell_size - 0.001f;
+			hy = floorf((float)p->y / (float)cell_size) * (float)cell_size - 0.001f;
 			hx = (p->y - hy)*aTan + p->x;
-			yo = -cell_size;
+			yo = (float)cell_size * -1.;
 			xo = -yo*aTan;
 		}
 		// looking down
@@ -127,6 +125,7 @@ void drawRays(player_t *p)
 				dof++;
 			}
 		}
+
 		float distH = (hy - p->y)*(hy - p->y) + (hx - p->x)*(hx - p->x);
 		float distV = (vy - p->y)*(vy - p->y) + (vx - p->x)*(vx - p->x);
 		float dist = distV > distH ? distH : distV;
@@ -134,15 +133,15 @@ void drawRays(player_t *p)
 		float corrected_dist = dist * cosf(ra - p->angle);
 #if 1
 		if ( distH > distV)
-			DrawLine(p->x + 10, p->y + 10, vx, vy, RED);
+			DrawLine((int)p->x + player_size/2, (int)p->y + player_size/2, (int)vx, (int)vy, RED);
 		else
-			DrawLine(p->x + 10, p->y + 10, hx, hy, RED);
+			DrawLine((int)p->x + player_size/2, (int)p->y + player_size/2, (int)hx, (int)hy, RED);
 #endif
 		// NOTE: draw wall
 		float lineH = (cell_size * WALL_HEIGHT)/corrected_dist;
 		if (lineH > HEIGHT) lineH = HEIGHT;
 		float line_offset = (HEIGHT/2.0f) - (lineH/2.0f);
-		DrawRectangle(800 + r*(800)/FOV, line_offset, 800/FOV, lineH, GREEN);
+		DrawRectangle(800 + r*(800)/(int)FOV, (int)line_offset, 800/(int)FOV, (int)lineH, GREEN);
 	}
 }
 
@@ -174,7 +173,7 @@ void update_player(player_t *player)
 		player->dx = cosf(player->angle) * PLAYER_ANGLE;
 		player->dy = sinf(player->angle) * PLAYER_ANGLE;
 	}
-	DrawRectangle(player->x, player->y, player_size, player_size, RED);
+	DrawRectangle((int)player->x, (int)player->y, player_size, player_size, RED);
 	// DrawLine(player->x, player->y, player->x + PLAYER_ANGLE*player->dx, player->y + PLAYER_ANGLE*player->dy, GREEN);
 }
 
