@@ -1,5 +1,13 @@
-main
-.cache/
-.ignore
-/compile_commands.json
-/Session.vim
+# ignore everything
+*
+
+# whitelist directory
+!*/
+
+# whitelist hpp, cpp
+!*.*pp
+!*.c
+!*.h
+
+# whitelist makefile
+!Makefile
