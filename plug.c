@@ -1,20 +1,6 @@
 #include "raylib.h"
-#include <stdint.h>
-#include <math.h>
 #include "plug.h"
-
-#define player_size 20
-#define WIDTH 800
-#define SCENE_WIDTH 1920
-#define HEIGHT 1080
-#define mapX 8
-#define mapY 8
-#define DR 0.017453292519943295f
-#define BACKGROUND 0x101010FF
-#define PLAYER_ANGLE 10
-#define PROJECTION_DIST 1662
-#define WALL_HEIGHT 692.8f
-#define FOV 60.0f
+#include "raymath.h"
 
 int map[] =
 {
@@ -28,11 +14,14 @@ int map[] =
 	1,1,1,1,1,1,1,1,
 };
 
-void drawRays(Player *p)
+static const float ray_delta = FOV * DR/CANVAS_WIDTH;
+
+void drawRays(Player p)
 {
-	float yo, xo;
-	float ra = p->angle - 30.0f * DR;
-	for (int r = 0; r < SCENE_WIDTH; r++, ra += FOV * DR/SCENE_WIDTH)
+	float step_y, step_x;
+	float ra = p.angle - 30.0f * DR;
+
+	for (int r = 0; r < CANVAS_WIDTH; r++, ra += ray_delta)
 	{
 		int dof = 0;
 		float aTan = -1/tanf(ra);
@@ -44,21 +33,21 @@ void drawRays(Player *p)
 		// NOTE: find horizontal intersection
 		// looking up
 		if (ra > PI) {
-			hy = floorf(p->y) - 0.001f;
-			hx = (p->y - hy)*aTan + p->x;
-			yo = -1.0f;
-			xo = aTan;
+			hy = floorf(p.pos.y) - 0.001f;
+			hx = (p.pos.y - hy)*aTan + p.pos.x;
+			step_y = -1.0f;
+			step_x = aTan;
 		}
 		// looking down
 		else if (ra < PI && ra > 0) {
-			hy = floorf(p->y) + 1.0f;
-			hx = (p->y - hy)*aTan + p->x;
-			yo = 1.0f;
-			xo = -aTan;
+			hy = floorf(p.pos.y) + 1.0f;
+			hx = (p.pos.y - hy)*aTan + p.pos.x;
+			step_y = 1.0f;
+			step_x = -aTan;
 		}
 		else {
-			hx = p->x;
-			hy = p->y;
+			hx = p.pos.x;
+			hy = p.pos.y;
 			dof = mapX;
 		}
 		while (dof < mapX)
@@ -70,34 +59,34 @@ void drawRays(Player *p)
 				dof = mapX;
 			else
 			{
-				hx += xo;
-				hy += yo;
+				hx += step_x;
+				hy += step_y;
 				dof++;
 			}
 		}
 		// NOTE: find vertical intersection
 		aTan = -tanf(ra);
 		dof = 0;
-		float vx = p->x, vy = p->y;
+		float vx = p.pos.x, vy = p.pos.y;
 		// looking right
 		if ((ra > 3*PI/2 && ra < 2*PI) || (ra < PI/2 && ra > 0))
 		{
-			vx = floorf(p->x) + 1.0f;
-			vy = p->y + (p->x - vx)*aTan;
-			xo = 1.0f;
-			yo = -aTan;
+			vx = floorf(p.pos.x) + 1.0f;
+			vy = p.pos.y + (p.pos.x - vx)*aTan;
+			step_x = 1.0f;
+			step_y = -aTan;
 		}
 		// looking left
 		else if (ra > PI/2 && ra < 3*PI/2)
 		{
-			vx = floorf(p->x) - 0.001f;
-			vy = p->y + (p->x - vx)*aTan;
-			xo = -1.0f;
-			yo = aTan;
+			vx = floorf(p.pos.x) - 0.001f;
+			vy = p.pos.y + (p.pos.x - vx)*aTan;
+			step_x = -1.0f;
+			step_y = aTan;
 		}
 		else {
-			vx = p->x;
-			vy = p->y;
+			vx = p.pos.x;
+			vy = p.pos.y;
 			dof = mapX;
 		}
 		while (dof < mapX)
@@ -109,30 +98,59 @@ void drawRays(Player *p)
 				dof = mapX;
 			else
 			{
-				vx += xo;
-				vy += yo;
+				vx += step_x;
+				vy += step_y;
 				dof++;
 			}
 		}
 
-		float distH = (hy - p->y)*(hy - p->y) + (hx - p->x)*(hx - p->x);
-		float distV = (vy - p->y)*(vy - p->y) + (vx - p->x)*(vx - p->x);
+		float distH = (hy - p.pos.y)*(hy - p.pos.y) + (hx - p.pos.x)*(hx - p.pos.x);
+		float distV = (vy - p.pos.y)*(vy - p.pos.y) + (vx - p.pos.x)*(vx - p.pos.x);
 		float dist = distV > distH ? distH : distV;
 		dist = sqrtf(dist);
-		float corrected_dist = dist * cosf(ra - p->angle);
+		float corrected_dist = dist * cosf(ra - p.angle);
 
 		// NOTE: draw wall
-		float wall_height = WALL_HEIGHT/corrected_dist;
-		if (wall_height > HEIGHT)
-			wall_height = HEIGHT;
-		float line_offset = (HEIGHT - wall_height)/2.0f;
+		float wall_height = PROJECTION_DIST/corrected_dist;
+		if (wall_height > CANVAS_HEIGHT)
+			wall_height = CANVAS_HEIGHT;
+		float line_offset = (CANVAS_HEIGHT - wall_height)/2.0f;
 		DrawRectangle(r, (int)line_offset, 1, (int)wall_height, SKYBLUE);
 	}
 }
 
-void render(Player *player) {
+static bool in_bound (Vector2 pos, GameState *game) {
+	(void)pos;
+	(void)game;
+	return true;
+}
+
+static void update_player(GameState *game) {
+	Player *player = &game->p;
+	int fps = GetFPS();
+	if (IsKeyDown(KEY_W)) {
+		Vector2 new_pos = Vector2Add(player->pos, Vector2Scale(player->dir, SPEED/fps));
+		if (in_bound(new_pos, game))
+			player->pos = new_pos;
+	}
+	if (IsKeyDown(KEY_S)) {
+		player->pos = Vector2Subtract(player->pos, Vector2Scale(player->dir, SPEED/fps));
+	}
+	if (IsKeyDown(KEY_A)) {
+		Vector2 new_dir = {player->dir.y, -player->dir.x};
+		player->pos = Vector2Add(Vector2Scale(new_dir, SPEED/fps), player->pos);
+	}
+	if (IsKeyDown(KEY_D)) {
+		Vector2 new_dir = {-player->dir.y, player->dir.x};
+		player->pos = Vector2Add(Vector2Scale(new_dir, SPEED/fps), player->pos);
+	}
+}
+
+void render(GameState *game) {
 	BeginDrawing();
 	ClearBackground(GetColor(BACKGROUND));
-	drawRays(player);
+	update_player(game);
+	drawRays(game->p);
+	DrawFPS(0, 0);
 	EndDrawing();
 }
