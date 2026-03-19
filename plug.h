@@ -4,13 +4,11 @@
 
 #define CANVAS_WIDTH 1920
 #define CANVAS_HEIGHT 1080
-#define mapX 8
-#define mapY 8
 #define DR 0.017453292519943295f
 #define BACKGROUND 0x101010FF
 #define PROJECTION_DIST 1662.0f
 #define FOV 60.0f
-#define SPEED 5.f
+#define SPEED 3.f
 #define MAP_COUNT 2
 
 typedef struct
