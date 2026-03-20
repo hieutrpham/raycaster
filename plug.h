@@ -1,7 +1,9 @@
 #include <dlfcn.h>
 #include <stdio.h>
 #include "raylib.h"
+#include <math.h>
 
+#define MOUSE_SENSITIVITY 0.001f
 #define CANVAS_WIDTH 1920
 #define CANVAS_HEIGHT 1080
 #define DR 0.017453292519943295f
@@ -25,7 +27,44 @@ typedef struct {
 } Map;
 
 typedef struct {
-	Player p;
+	Player player;
 	Map maps[MAP_COUNT];
 	int current_map_index;
 } GameState;
+
+Player player = {
+	.pos = (Vector2){.x = 3.0f, .y = 3.0f},
+	.dir = (Vector2){.x = 0, .y = 1},
+	.angle = PI/2,
+};
+
+Map map2 = {
+	.map = {
+		1,1,1,1,1,1,1,1,
+		1,0,0,0,0,0,0,1,
+		1,0,0,0,0,0,0,1,
+		1,0,0,0,0,0,0,1,
+		1,0,0,0,0,0,0,1,
+		1,0,0,0,0,0,0,1,
+		1,0,0,0,0,0,0,1,
+		1,1,1,1,1,1,1,1,
+	},
+	.map_height = 8,
+	.map_width = 8
+};
+
+Map map1 = {
+	.map = {
+		1,1,1,1,1,1,1,1,
+		1,0,0,0,1,0,0,1,
+		1,0,1,0,1,0,0,1,
+		1,0,0,0,1,0,0,1,
+		1,0,0,0,0,0,0,1,
+		1,0,1,0,0,1,0,1,
+		1,0,1,0,0,0,0,1,
+		1,1,1,1,1,1,1,1,
+	},
+	.map_height = 8,
+	.map_width = 8
+};
+

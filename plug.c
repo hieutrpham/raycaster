@@ -10,7 +10,7 @@ static bool hit_wall(int pos, Map current_map) {
 
 void drawRays(GameState *game)
 {
-	Player *p = &game->p;
+	Player *p = &game->player;
 	Map current_map = game->maps[game->current_map_index];
 	float step_y, step_x;
 	float ra = p->angle - 30.0f * DR;
@@ -124,7 +124,7 @@ static bool is_wall (Vector2 pos, GameState *game) {
 }
 
 static void update_player(GameState *game) {
-	Player *player = &game->p;
+	Player *player = &game->player;
 	int fps = GetFPS();
 	if (IsKeyDown(KEY_W)) {
 		Vector2 new_pos = Vector2Add(player->pos, Vector2Scale(player->dir, SPEED/fps));
@@ -151,8 +151,21 @@ static void update_player(GameState *game) {
 	}
 }
 
+void mouse_control(GameState *game) {
+	Player *p = &game->player;
+	int delta_x = GetMouseX() - CANVAS_WIDTH/2;
+	p->angle += delta_x * MOUSE_SENSITIVITY;
+	if (p->angle < 0)
+		p->angle += 2 * PI;
+	if (p->angle > 2 * PI)
+		p->angle -= 2 * PI;
+	p->dir.x = cosf(p->angle);
+	p->dir.y = sinf(p->angle);
+	SetMousePosition(CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+}
+
 void reset_pos(GameState *game) {
-	Player *p = &game->p;
+	Player *p = &game->player;
 	Map map = game->maps[game->current_map_index];
 	if (IsKeyPressed(KEY_Y)) {
 		p->pos = (Vector2){map.map_width/2, map.map_height/2};
@@ -168,6 +181,7 @@ void next_map(GameState *game) {
 void render(GameState *game) {
 	BeginDrawing();
 	ClearBackground(GetColor(BACKGROUND));
+	mouse_control(game);
 	reset_pos(game);
 	next_map(game);
 	update_player(game);
