@@ -10,6 +10,7 @@ int main(void)
 		return fprintf(stderr, "%s\n", dlerror());
 	render = dlsym(lib, "render");
 	InitWindow(CANVAS_WIDTH, CANVAS_HEIGHT, "Raycaster");
+	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
 
 	// Setting up the game data
 	GameState game = {
