@@ -1,6 +1,9 @@
 #include "raylib.h"
 #include "plug.h"
 #include "raymath.h"
+#include <math.h>
+#include <stdint.h>
+#include <string.h>
 
 static const float ray_delta = FOV * DR/CANVAS_WIDTH;
 
@@ -12,6 +15,13 @@ void drawRays(GameState *game)
 {
 	Player *p = &game->player;
 	Map current_map = game->maps[game->current_map_index];
+	uint32_t *image_data = (uint32_t *)game->image.data; // PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 32 bpp
+	bzero(image_data, game->image.width * game->image.height * 4);
+	// for (int y = 0; y < game->image.height; ++y) {
+	// 	for (int x = 0; x < game->image.width; ++x) {
+	// 		image_data[y * game->image.width + x] = 0x181818ff;
+	// 	}
+	// }
 	float step_y, step_x;
 	float ra = p->angle - 30.0f * DR;
 
@@ -109,7 +119,18 @@ void drawRays(GameState *game)
 		if (wall_height > CANVAS_HEIGHT)
 			wall_height = CANVAS_HEIGHT;
 		float line_offset = (CANVAS_HEIGHT - wall_height)/2.0f;
-		DrawRectangle(r, (int)line_offset, 1, (int)wall_height, SKYBLUE);
+
+		// if ray hit horizontal line, texture x will be the mod of hx else vy;
+		float tx = distH < distV ? fmod(hx, 1.f) : fmod(vy, 1.f);
+		Rectangle src_rec = {tx * game->wall.width, 0, 0, game->wall.height };
+		Rectangle dest_rec = {(float)r, line_offset, 1, (int)wall_height};
+		float brightness = corrected_dist*10.f;
+		Color tint = {WHITE.r * brightness, WHITE.g * brightness, WHITE.g * brightness, WHITE.a * brightness};
+		DrawTexturePro(game->wall, src_rec, dest_rec, (Vector2){0, 0}, 0.f, tint);
+		// DrawRectangle(r, (int)line_offset, 1, (int)wall_height, SKYBLUE);
+		// for (int y = (int)line_offset; y < (int)line_offset + (int)wall_height; ++y) {
+		// 	image_data[y * game->image.width + r] = 0xff181818;
+		// }
 	}
 }
 
@@ -179,13 +200,15 @@ void next_map(GameState *game) {
 }
 
 void render(GameState *game) {
-	BeginDrawing();
-	ClearBackground(GetColor(BACKGROUND));
 	mouse_control(game);
 	reset_pos(game);
 	next_map(game);
 	update_player(game);
 	drawRays(game);
-	DrawFPS(0, 0);
+	UpdateTexture(game->canvas, game->image.data);
+	BeginDrawing();
+		ClearBackground(GetColor(BACKGROUND));
+		DrawTexture(game->canvas, 0, 0, WHITE);
+		DrawFPS(10, 10);
 	EndDrawing();
 }

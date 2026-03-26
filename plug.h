@@ -28,6 +28,9 @@ typedef struct {
 
 typedef struct {
 	Player player;
+	Texture2D canvas;
+	Image image;
+	Texture2D wall;
 	Map maps[MAP_COUNT];
 	int current_map_index;
 } GameState;
