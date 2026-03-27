@@ -8,7 +8,7 @@
 static const float ray_delta = FOV * DR/CANVAS_WIDTH;
 
 static bool hit_wall(int pos, Map current_map) {
-	return (pos > 0 && pos < current_map.map_width * current_map.map_height && current_map.map[pos] == 1);
+	return (pos > 0 && pos < current_map.map_width * current_map.map_height && current_map.map[pos] != SPACE);
 }
 
 void drawRays(GameState *game)
@@ -22,8 +22,9 @@ void drawRays(GameState *game)
 	// 		image_data[y * game->image.width + x] = 0x181818ff;
 	// 	}
 	// }
+	int mx, my, mp;
 	float step_y, step_x;
-	float ra = p->angle - 30.0f * DR;
+	float ra = p->angle - 30.0f * DR; // FOV = 60
 
 	for (int r = 0; r < CANVAS_WIDTH; r++, ra += ray_delta)
 	{
@@ -52,15 +53,15 @@ void drawRays(GameState *game)
 		else {
 			hx = p->pos.x;
 			hy = p->pos.y;
-			dof = current_map.map_width;
+			dof = current_map.map_height;
 		}
-		while (dof < current_map.map_width)
+		while (dof < current_map.map_height)
 		{
-			int mx = (int)(hx);
-			int my = (int)(hy);
-			int mp = my * current_map.map_width + mx;
+			mx = (int)(hx);
+			my = (int)(hy);
+			mp = my * current_map.map_width + mx;
 			if (hit_wall(mp, current_map))
-				dof = current_map.map_width;
+				dof = current_map.map_height;
 			else
 			{
 				hx += step_x;
@@ -95,9 +96,9 @@ void drawRays(GameState *game)
 		}
 		while (dof < current_map.map_width)
 		{
-			int mx = (int)(vx);
-			int my = (int)(vy);
-			int mp = my * current_map.map_width + mx;
+			mx = (int)(vx);
+			my = (int)(vy);
+			mp = my * current_map.map_width + mx;
 			if (hit_wall(mp, current_map))
 				dof = current_map.map_width;
 			else
@@ -108,11 +109,13 @@ void drawRays(GameState *game)
 			}
 		}
 
-		float distH = (hy - p->pos.y)*(hy - p->pos.y) + (hx - p->pos.x)*(hx - p->pos.x);
-		float distV = (vy - p->pos.y)*(vy - p->pos.y) + (vx - p->pos.x)*(vx - p->pos.x);
+		mp = (int)(Clamp((float)mp, 0.f, (float)(current_map.map_height * current_map.map_width)));
+		Vector2 horizonal_intersection = (Vector2){hx, hy};
+		Vector2 vertical_intersection = (Vector2){vx, vy};
+		float distH = Vector2LengthSqr(Vector2Subtract(horizonal_intersection, p->pos));
+		float distV = Vector2LengthSqr(Vector2Subtract(vertical_intersection, p->pos));
 		float dist = distV > distH ? distH : distV;
-		dist = sqrtf(dist);
-		float corrected_dist = dist * cosf(ra - p->angle);
+		float corrected_dist = sqrtf(dist) * cosf(ra - p->angle);
 
 		// NOTE: draw wall
 		float wall_height = PROJECTION_DIST/corrected_dist;
@@ -120,17 +123,18 @@ void drawRays(GameState *game)
 			wall_height = CANVAS_HEIGHT;
 		float line_offset = (CANVAS_HEIGHT - wall_height)/2.0f;
 
-		// if ray hit horizontal line, texture x will be the mod of hx else vy;
-		float tx = distH < distV ? fmod(hx, 1.f) : fmod(vy, 1.f);
-		Rectangle src_rec = {tx * game->wall.width, 0, 0, game->wall.height };
-		Rectangle dest_rec = {(float)r, line_offset, 1, (int)wall_height};
-		float brightness = corrected_dist*10.f;
-		Color tint = {WHITE.r * brightness, WHITE.g * brightness, WHITE.g * brightness, WHITE.a * brightness};
-		DrawTexturePro(game->wall, src_rec, dest_rec, (Vector2){0, 0}, 0.f, tint);
-		// DrawRectangle(r, (int)line_offset, 1, (int)wall_height, SKYBLUE);
-		// for (int y = (int)line_offset; y < (int)line_offset + (int)wall_height; ++y) {
-		// 	image_data[y * game->image.width + r] = 0xff181818;
-		// }
+			// if ray hit horizontal line, texture x will be the mod of hx else vy;
+		if (current_map.map[mp] == WALL) {
+			float tx = distH < distV ? fmod(hx, 1.f) : fmod(vy, 1.f);
+			Rectangle src_rec = {tx * game->wall.width, 0, 0, game->wall.height };
+			Rectangle dest_rec = {(float)r, line_offset, 1, (int)wall_height};
+			float brightness = Clamp(wall_height/CANVAS_HEIGHT, 0.f, 1.f);
+			Color tint = {WHITE.r * brightness, WHITE.g * brightness, WHITE.b * brightness, 255};
+			DrawTexturePro(game->wall, src_rec, dest_rec, (Vector2){0, 0}, 0.f, tint);
+		}
+		if (current_map.map[mp] == ENEMY) {
+			DrawRectangle(r, (int)line_offset, 1, (int)wall_height, RED);
+		}
 	}
 }
 
@@ -139,7 +143,7 @@ void drawRays(GameState *game)
 static bool is_wall (Vector2 pos, GameState *game) {
 	Map map = game->maps[game->current_map_index];
 	int mp = (int)pos.y * map.map_width + (int)pos.x;
-	if (mp > 0 && mp < map.map_width * map.map_height && map.map[mp] == 1)
+	if (mp > 0 && mp < map.map_width * map.map_height && map.map[mp] == WALL)
 		return true;
 	return false;
 }
