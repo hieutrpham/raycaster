@@ -1,3 +1,6 @@
+#ifndef PLUG_H
+#define PLUG_H
+
 #include <dlfcn.h>
 #include <stdio.h>
 #include "raylib.h"
@@ -40,40 +43,4 @@ typedef enum {
 	WALL,
 	ENEMY
 } CellType ;
-
-Player player = {
-	.pos = (Vector2){.x = 3.0f, .y = 3.0f},
-	.dir = (Vector2){.x = 0, .y = 1},
-	.angle = PI/2,
-};
-
-Map map1 = {
-	.map = {
-		1,1,1,1,1,1,1,1,
-		1,0,0,0,0,0,0,1,
-		1,0,0,0,0,0,0,1,
-		1,0,0,0,0,0,0,1,
-		1,0,0,0,0,0,0,1,
-		1,0,2,0,0,0,0,1,
-		1,0,0,0,0,0,0,1,
-		1,1,1,1,1,1,1,1,
-	},
-	.map_height = 8,
-	.map_width = 8
-};
-
-Map map2 = {
-	.map = {
-		1,1,1,1,1,1,1,1,
-		1,0,0,0,1,0,0,1,
-		1,0,1,0,1,0,0,1,
-		1,0,0,0,1,0,0,1,
-		1,0,0,0,0,0,0,1,
-		1,0,1,0,0,1,0,1,
-		1,0,1,0,0,0,0,1,
-		1,1,1,1,1,1,1,1,
-	},
-	.map_height = 8,
-	.map_width = 8
-};
-
+#endif // !PLUG_H

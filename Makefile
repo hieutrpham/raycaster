@@ -1,10 +1,50 @@
+# INCLUDE=-I./raylib-5.5_linux_amd64/include/
+# LIB=-L. -L./raylib-5.5_linux_amd64/lib/ -l:libraylib.so -lm
+# FLAGS=-Wall -Wextra -Werror -O3
+# SFLAGS= -Wl,-rpath,./ -Wl,-rpath,./raylib-5.5_linux_amd64/lib/
+#
+# all: main.c plug
+# 	cc $(FLAGS) $(SFLAGS) $(INCLUDE) -o main main.c $(LIB)
+#
+# plug: plug.c
+# 	cc $(FLAGS) $(INCLUDE) -fPIC -shared -o libplug.so plug.c $(LIB)
+#
+CC = cc
+NAME = main
+CFLAGS = -Wall -Werror -Wextra -Wno-missing-field-initializers
+DFLAGS = -MMD -MP
 INCLUDE=-I./raylib-5.5_linux_amd64/include/
-LIB=-L. -L./raylib-5.5_linux_amd64/lib/ -l:libraylib.so -lm
-FLAGS=-Wall -Wextra -Werror -O3
-SFLAGS= -Wl,-rpath,./ -Wl,-rpath,./raylib-5.5_linux_amd64/lib/
+LIB=-L. -L./raylib-5.5_linux_amd64/lib/ -l:libraylib.a -lm
+SRC = main.c plug.c
+OBJ = $(SRC:.c=.o)
+OBJ_PATH = obj/
+OBJS = $(addprefix $(OBJ_PATH), $(OBJ))
+DEP = $(addprefix $(OBJ_PATH), $(SRC:.c=.d))
 
-all: main.c plug
-	cc $(FLAGS) $(SFLAGS) $(INCLUDE) -o main main.c $(LIB)
+all: $(OBJ_PATH) $(NAME)
 
-plug: plug.c
-	cc $(FLAGS) $(INCLUDE) -fPIC -shared -o libplug.so plug.c $(LIB)
+$(OBJ_PATH)%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDE) $(DFLAGS) -o $@ -c $<
+
+$(OBJ_PATH):
+	mkdir -p $(OBJ_PATH)
+
+.SECONDARY: $(OBJS)
+
+$(NAME): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LIB)
+
+-include $(DEP)
+
+clean:
+	rm -rf $(OBJ_PATH)
+
+fclean: clean
+	rm -f $(NAME)
+
+re: fclean all
+
+debug:
+	$(MAKE) CFLAGS="$(CFLAGS) -g" re
+
+.PHONY: all clean fclean re debug
