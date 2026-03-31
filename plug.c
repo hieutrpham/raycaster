@@ -2,29 +2,35 @@
 #include "plug.h"
 #include "raymath.h"
 #include <math.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
 static const float ray_delta = FOV * DR/CANVAS_WIDTH;
 
-static bool hit_wall(int pos, Map current_map) {
-	return (pos > 0 && pos < current_map.map_width * current_map.map_height && current_map.map[pos] != SPACE);
+static inline bool hit_wall(int pos, Map current_map) {
+	return (pos > 0 && pos < current_map.map_width * current_map.map_height
+			&& current_map.map[pos] > SPACE);
 }
 
-void drawRays(GameState *game)
-{
+static inline int clamp_int(int value, int begin, int end) {
+	int ret = value;
+	if (ret <= begin)
+		ret = begin;
+	if (ret >= end)
+		ret = end;
+	return ret;
+}
+
+void drawRays(GameState *game) {
 	Player *p = &game->player;
 	Map current_map = game->maps[game->current_map_index];
 	uint32_t *image_data = (uint32_t *)game->image.data; // PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 32 bpp
 	bzero(image_data, game->image.width * game->image.height * 4);
-	// for (int y = 0; y < game->image.height; ++y) {
-	// 	for (int x = 0; x < game->image.width; ++x) {
-	// 		image_data[y * game->image.width + x] = 0x181818ff;
-	// 	}
-	// }
-	int mx, my, mp;
-	float step_y, step_x;
+	size_t mx, my, mph, mpv; // map coordinates
+	float step_y, step_x; // DDA steps
 	float ra = p->angle - 30.0f * DR; // FOV = 60
+	size_t map_size = current_map.map_height * current_map.map_width;
 
 	for (int r = 0; r < CANVAS_WIDTH; r++, ra += ray_delta)
 	{
@@ -59,8 +65,8 @@ void drawRays(GameState *game)
 		{
 			mx = (int)(hx);
 			my = (int)(hy);
-			mp = my * current_map.map_width + mx;
-			if (hit_wall(mp, current_map))
+			mph = my * current_map.map_width + mx;
+			if (hit_wall(mph, current_map))
 				dof = current_map.map_height;
 			else
 			{
@@ -98,8 +104,8 @@ void drawRays(GameState *game)
 		{
 			mx = (int)(vx);
 			my = (int)(vy);
-			mp = my * current_map.map_width + mx;
-			if (hit_wall(mp, current_map))
+			mpv = my * current_map.map_width + mx;
+			if (hit_wall(mpv, current_map))
 				dof = current_map.map_width;
 			else
 			{
@@ -109,7 +115,6 @@ void drawRays(GameState *game)
 			}
 		}
 
-		mp = (int)(Clamp((float)mp, 0.f, (float)(current_map.map_height * current_map.map_width)));
 		Vector2 horizonal_intersection = (Vector2){hx, hy};
 		Vector2 vertical_intersection = (Vector2){vx, vy};
 		float distH = Vector2LengthSqr(Vector2Subtract(horizonal_intersection, p->pos));
@@ -123,17 +128,24 @@ void drawRays(GameState *game)
 			wall_height = CANVAS_HEIGHT;
 		float line_offset = (CANVAS_HEIGHT - wall_height)/2.0f;
 
-			// if ray hit horizontal line, texture x will be the mod of hx else vy;
-		if (current_map.map[mp] == WALL) {
+		mph = clamp_int(mph, 0, map_size);
+		mpv = clamp_int(mpv, 0, map_size);
+
+		size_t mp_correct = distV > distH ? mph : mpv;
+
+		// BUG: rendering bug where i guess the map check doesn't return expected result?
+		if (current_map.map[mp_correct] == WALL) {
 			float tx = distH < distV ? fmod(hx, 1.f) : fmod(vy, 1.f);
+			// BUG: need to calculate texture y as well to solve the texture bug
 			Rectangle src_rec = {tx * game->wall.width, 0, 0, game->wall.height };
 			Rectangle dest_rec = {(float)r, line_offset, 1, (int)wall_height};
 			float brightness = Clamp(wall_height/CANVAS_HEIGHT, 0.f, 1.f);
 			Color tint = {WHITE.r * brightness, WHITE.g * brightness, WHITE.b * brightness, 255};
 			DrawTexturePro(game->wall, src_rec, dest_rec, (Vector2){0, 0}, 0.f, tint);
-		}
-		if (current_map.map[mp] == ENEMY) {
+		} else if (current_map.map[mp_correct] == ENEMY) {
 			DrawRectangle(r, (int)line_offset, 1, (int)wall_height, RED);
+		} else {
+			DrawRectangle(r, (int)line_offset, 1, (int)wall_height, GREEN);
 		}
 	}
 }
