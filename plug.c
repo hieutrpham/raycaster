@@ -27,7 +27,7 @@ void drawRays(GameState *game) {
 	Map current_map = game->maps[game->current_map_index];
 	uint32_t *image_data = (uint32_t *)game->image.data; // PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 32 bpp
 	bzero(image_data, game->image.width * game->image.height * 4);
-	size_t mx, my, mph, mpv; // map coordinates
+	size_t mx, my, mph = 0, mpv = 0; // map coordinates
 	float step_y, step_x; // DDA steps
 	float ra = p->angle - 30.0f * DR; // FOV = 60
 	size_t map_size = current_map.map_height * current_map.map_width;
@@ -160,6 +160,9 @@ static bool is_wall (Vector2 pos, GameState *game) {
 	return false;
 }
 
+/* keep track of the player's grid position on the 2D map
+ * update it every frame using the player->pos
+ * */
 static void update_player(GameState *game) {
 	Player *player = &game->player;
 	int fps = GetFPS();
@@ -201,25 +204,39 @@ void mouse_control(GameState *game) {
 	SetMousePosition(CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
 }
 
-void reset_pos(GameState *game) {
+void control(GameState *game) {
 	Player *p = &game->player;
 	Map map = game->maps[game->current_map_index];
-	if (IsKeyPressed(KEY_Y)) {
+	int next_map = (game->current_map_index + 1) % MAP_COUNT;
+	if (IsKeyPressed(KEY_Y)) // reset player position
 		p->pos = (Vector2){map.map_width/2, map.map_height/2};
-	}
+	if (IsKeyPressed(KEY_M)) // change map
+		game->current_map_index = next_map;
 }
 
-void next_map(GameState *game) {
-	int next_map = (game->current_map_index + 1) % MAP_COUNT;
-	if (IsKeyPressed(KEY_M))
-		game->current_map_index = next_map;
+// TODO: make the enemy cell track the player grid position and move towards
+void update_map(GameState *game) {
+	Map current = game->maps[game->current_map_index];
+	int *map = game->maps[game->current_map_index].map;
+	if (IsKeyPressed(KEY_N)) {
+		for (int y = 0; y < current.map_height; ++y) {
+			for (int x = 0; x < current.map_width; ++x) {
+				CellType cell = map[y * current.map_height + x];
+				if (cell == ENEMY) {
+					map[y * current.map_height + x] = SPACE;
+					map[y * current.map_height + x + 1] = ENEMY;
+					return;
+				}
+			}
+		}
+	}
 }
 
 void render(GameState *game) {
 	mouse_control(game);
-	reset_pos(game);
-	next_map(game);
+	control(game);
 	update_player(game);
+	update_map(game);
 	drawRays(game);
 	UpdateTexture(game->canvas, game->image.data);
 	BeginDrawing();
