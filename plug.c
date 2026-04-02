@@ -10,7 +10,7 @@ static const float ray_delta = FOV * DR/CANVAS_WIDTH;
 
 static inline bool hit_wall(int pos, Map current_map) {
 	return (pos > 0 && pos < current_map.map_width * current_map.map_height
-			&& current_map.map[pos] > SPACE);
+			&& current_map.map[pos] > SPACE && current_map.map[pos] < 0xff);
 }
 
 static inline int clamp_int(int value, int begin, int end) {
@@ -22,11 +22,12 @@ static inline int clamp_int(int value, int begin, int end) {
 	return ret;
 }
 
-void drawRays(GameState *game) {
-	Player *p = &game->player;
+//@brief :raycast algo
+void raycast(GameState *game) {
+	Player *p = &game->maps[game->current_map_index].player;
 	Map current_map = game->maps[game->current_map_index];
-	uint32_t *image_data = (uint32_t *)game->image.data; // PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 32 bpp
-	bzero(image_data, game->image.width * game->image.height * 4);
+	// uint32_t *image_data = (uint32_t *)game->image.data; // PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 32 bpp
+	// bzero(image_data, game->image.width * game->image.height * 4);
 	size_t mx, my, mph = 0, mpv = 0; // map coordinates
 	float step_y, step_x; // DDA steps
 	float ra = p->angle - 30.0f * DR; // FOV = 60
@@ -133,7 +134,6 @@ void drawRays(GameState *game) {
 
 		size_t mp_correct = distV > distH ? mph : mpv;
 
-		// BUG: rendering bug where i guess the map check doesn't return expected result?
 		if (current_map.map[mp_correct] == WALL) {
 			float tx = distH < distV ? fmod(hx, 1.f) : fmod(vy, 1.f);
 			// BUG: need to calculate texture y as well to solve the texture bug
@@ -164,7 +164,7 @@ static bool is_wall (Vector2 pos, GameState *game) {
  * update it every frame using the player->pos
  * */
 static void update_player(GameState *game) {
-	Player *player = &game->player;
+	Player *player = &game->maps[game->current_map_index].player;
 	int fps = GetFPS();
 	if (IsKeyDown(KEY_W)) {
 		Vector2 new_pos = Vector2Add(player->pos, Vector2Scale(player->dir, SPEED/fps));
@@ -192,7 +192,7 @@ static void update_player(GameState *game) {
 }
 
 void mouse_control(GameState *game) {
-	Player *p = &game->player;
+	Player *p = &game->maps[game->current_map_index].player;
 	int delta_x = GetMouseX() - CANVAS_WIDTH/2;
 	p->angle += delta_x * MOUSE_SENSITIVITY;
 	if (p->angle < 0)
@@ -204,8 +204,10 @@ void mouse_control(GameState *game) {
 	SetMousePosition(CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
 }
 
+/* :control player position and map index
+*/
 void control(GameState *game) {
-	Player *p = &game->player;
+	Player *p = &game->maps[game->current_map_index].player;
 	Map map = game->maps[game->current_map_index];
 	int next_map = (game->current_map_index + 1) % MAP_COUNT;
 	if (IsKeyPressed(KEY_Y)) // reset player position
@@ -217,7 +219,7 @@ void control(GameState *game) {
 // TODO: make the enemy cell track the player grid position and move towards
 void update_map(GameState *game) {
 	Map current = game->maps[game->current_map_index];
-	int *map = game->maps[game->current_map_index].map;
+	uint8_t *map = game->maps[game->current_map_index].map;
 	if (IsKeyPressed(KEY_N)) {
 		for (int y = 0; y < current.map_height; ++y) {
 			for (int x = 0; x < current.map_width; ++x) {
@@ -232,16 +234,23 @@ void update_map(GameState *game) {
 	}
 }
 
-void render(GameState *game) {
+/*:update logic for the game
+ * - check for key inputs
+ */
+void game_update(GameState *game) {
 	mouse_control(game);
 	control(game);
 	update_player(game);
 	update_map(game);
-	drawRays(game);
 	UpdateTexture(game->canvas, game->image.data);
+}
+
+void render(GameState *game) {
+	game_update(game);
 	BeginDrawing();
 		ClearBackground(GetColor(BACKGROUND));
 		DrawTexture(game->canvas, 0, 0, WHITE);
+		raycast(game);
 		DrawFPS(10, 10);
 	EndDrawing();
 }

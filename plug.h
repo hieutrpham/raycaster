@@ -2,6 +2,7 @@
 #define PLUG_H
 
 #include <dlfcn.h>
+#include <stdint.h>
 #include <stdio.h>
 #include "raylib.h"
 #include <math.h>
@@ -15,24 +16,31 @@
 #define FOV 60.0f
 #define SPEED 3.f
 #define MAP_COUNT 2
+#define IMAGE_COUNT 1
+
+enum texture_enum {
+	e_BookShelf,
+};
 
 typedef struct
 {
 	Vector2 pos;
 	Vector2 dir;
 	float angle;
+	uint8_t grid_x;
+	uint8_t grid_y;
 } Player;
 
 typedef struct {
-	int map[512];
-	int map_width;
-	int map_height;
+	uint8_t map[512];
+	uint8_t map_width;
+	uint8_t map_height;
+	Player player;
 } Map;
 
 typedef struct {
-	Player player;
-	Texture2D canvas;
-	Image image;
+	Texture2D canvas; // canvas buffer to call DrawTexture on
+	Image image; // image buffer
 	Texture2D wall;
 	Map maps[MAP_COUNT];
 	int current_map_index;

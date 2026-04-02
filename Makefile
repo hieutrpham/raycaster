@@ -11,6 +11,8 @@ OBJ_PATH = obj/
 OBJS = $(addprefix $(OBJ_PATH), $(OBJ))
 DEP = $(addprefix $(OBJ_PATH), $(SRC:.c=.d))
 
+all: static
+
 # -- hot reload compile --
 hot: plug
 	$(CC) $(CFLAGS) -DHOT_RELOAD $(SFLAGS) $(INCLUDE) -o main main.c $(LIB)

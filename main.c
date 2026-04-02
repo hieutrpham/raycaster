@@ -7,57 +7,65 @@ void (*render)(GameState *game);
 void render(GameState *game);
 #endif
 
-Player player = {
-	.pos = (Vector2){.x = 1.5f, .y = 1.5f},
-	.dir = (Vector2){.x = 0, .y = 1},
-	.angle = PI/2,
+Map maps[MAP_COUNT] = {
+#define P (0xff) // denote player on the map
+	{
+		.map = {
+			1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+			1,0,0,P,0,0,0,0,0,0,0,0,0,0,0,1,
+			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+			1,0,0,0,0,0,0,0,2,0,0,0,0,0,0,1,
+			1,0,0,0,0,0,2,0,0,0,0,0,0,0,0,1,
+			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+			1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+		},
+		.map_height = 15,
+		.map_width = 16,
+		.player = {
+			.pos = (Vector2){.x = 3.5f, .y = 3.5f},
+			.dir = (Vector2){.x = 0, .y = 1},
+			.angle = PI/2
+		}
+	},
+
+	{
+		.map = {
+			1,1,1,1,1,1,1,1,
+			1,0,0,0,1,0,0,1,
+			1,0,1,0,1,0,0,1,
+			1,0,0,P,1,0,0,1,
+			1,0,0,0,0,0,0,1,
+			1,0,1,0,0,1,0,1,
+			1,0,1,0,0,0,0,1,
+			1,1,1,1,1,1,1,1,
+		},
+		.map_height = 8,
+		.map_width = 8,
+		.player = {
+			.pos = (Vector2){.x = 3.5f, .y = 3.5f},
+			.dir = (Vector2){.x = 0, .y = 1},
+			.angle = PI/2
+		}
+	}
 };
 
-Map map1 = {
-	.map = {
-		1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-		1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-		1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-		1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-		1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-		1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-		1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-		1,0,0,0,0,0,0,0,2,0,0,0,0,0,0,1,
-		1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-		1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-		1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-		1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-		1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-		1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-		1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-	},
-	.map_height = 15,
-	.map_width = 16
-};
+Image images[IMAGE_COUNT];
+Texture2D textures[IMAGE_COUNT];
 
-Map map2 = {
-	.map = {
-		1,1,1,1,1,1,1,1,
-		1,0,0,0,1,0,0,1,
-		1,0,1,0,1,0,0,1,
-		1,0,0,0,1,0,0,1,
-		1,0,0,0,0,0,0,1,
-		1,0,1,0,0,1,0,1,
-		1,0,1,0,0,0,0,1,
-		1,1,1,1,1,1,1,1,
-	},
-	.map_height = 8,
-	.map_width = 8
-};
+Image image; // generate new blank image
+Texture2D canvasTex;
+
+GameState game;
 
 void game_init() {
-}
-
-void game_shutdown() {
-}
-
-int main(void)
-{
 #ifdef HOT_RELOAD
 	char *libplug = "./libplug.so";
 	void *lib = dlopen(libplug, RTLD_NOW);
@@ -65,22 +73,37 @@ int main(void)
 		return fprintf(stderr, "%s\n", dlerror());
 	render = dlsym(lib, "render");
 #endif
-	
+
+	images[e_BookShelf] = LoadImage("./assets/Bookshelf_64.png");
+	textures[e_BookShelf] = LoadTextureFromImage(images[e_BookShelf]);
+
+	image = GenImageColor(CANVAS_WIDTH, CANVAS_HEIGHT, BLACK); // generate new blank image
+	canvasTex = LoadTextureFromImage(image);
+
+	for (int i = 0; i < MAP_COUNT; ++i) {
+		game.maps[i] = maps[i];
+	}
+	game.current_map_index = 0;
+	game.canvas = canvasTex;
+	game.image = image;
+	game.wall = textures[e_BookShelf];
+}
+
+void game_shutdown() {
+	for (int i = 0; i < IMAGE_COUNT; ++i) {
+		UnloadImage(images[i]);
+		UnloadTexture(textures[i]);
+	}
+
+	UnloadImage(image);
+	UnloadTexture(canvasTex);
+}
+
+int main(void)
+{
 	InitWindow(CANVAS_WIDTH, CANVAS_HEIGHT, "Raycaster");
+	game_init();
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-	Image wall = LoadImage("./Bookshelf_64.png");
-	Image image = GenImageColor(CANVAS_WIDTH, CANVAS_HEIGHT, BLACK); // generate new blank image
-	Texture2D canvasTex = LoadTextureFromImage(image);
-	Texture2D texture_wall = LoadTextureFromImage(wall);
-	// Setting up the game data
-	GameState game = {
-		.player = player,
-		.maps = {map1, map2},
-		.current_map_index = 0,
-		.canvas = canvasTex,
-		.image = image,
-		.wall = texture_wall,
-	};
 	HideCursor();
 
 	while (!WindowShouldClose()) {
@@ -98,10 +121,7 @@ int main(void)
 		#endif
 		render(&game);
 	}
-	UnloadImage(wall);
-	UnloadImage(image);
-	UnloadTexture(canvasTex);
-	UnloadTexture(texture_wall);
+	game_shutdown();
 	CloseWindow();
 	return 0;
 }
