@@ -19,7 +19,7 @@
 #define IMAGE_COUNT 1
 
 enum texture_enum {
-	e_BookShelf,
+	MAP_0_TEXTURE,
 };
 
 typedef struct
@@ -29,9 +29,11 @@ typedef struct
 	float angle;
 	uint8_t grid_x;
 	uint8_t grid_y;
+	bool has_moved;
 } Player;
 
 typedef struct {
+	Texture2D wall_texture;
 	uint8_t map[512];
 	uint8_t map_width;
 	uint8_t map_height;
@@ -39,9 +41,6 @@ typedef struct {
 } Map;
 
 typedef struct {
-	Texture2D canvas; // canvas buffer to call DrawTexture on
-	Image image; // image buffer
-	Texture2D wall;
 	Map maps[MAP_COUNT];
 	int current_map_index;
 } GameState;
@@ -49,6 +48,7 @@ typedef struct {
 typedef enum {
 	SPACE,
 	WALL,
-	ENEMY
+	ENEMY,
+	FRIEND,
 } CellType ;
 #endif // !PLUG_H

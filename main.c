@@ -7,21 +7,24 @@ void (*render)(GameState *game);
 void render(GameState *game);
 #endif
 
+Image images[IMAGE_COUNT];
+Texture2D textures[IMAGE_COUNT];
+
 Map maps[MAP_COUNT] = {
 #define P (0xff) // denote player on the map
 	{
 		.map = {
 			1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+			1,2,0,0,0,0,0,0,0,0,0,0,2,0,0,1,
 			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
 			1,0,0,P,0,0,0,0,0,0,0,0,0,0,0,1,
 			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
 			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
 			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
 			1,0,0,0,0,0,0,0,2,0,0,0,0,0,0,1,
-			1,0,0,0,0,0,2,0,0,0,0,0,0,0,0,1,
 			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+			1,0,0,0,0,2,0,0,0,0,0,0,0,0,0,1,
+			1,0,0,0,0,0,0,2,0,0,0,0,0,0,0,1,
 			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
 			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
 			1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
@@ -32,8 +35,10 @@ Map maps[MAP_COUNT] = {
 		.player = {
 			.pos = (Vector2){.x = 3.5f, .y = 3.5f},
 			.dir = (Vector2){.x = 0, .y = 1},
-			.angle = PI/2
-		}
+			.angle = PI/2,
+			.grid_x = 3,
+			.grid_y = 3,
+		},
 	},
 
 	{
@@ -52,17 +57,15 @@ Map maps[MAP_COUNT] = {
 		.player = {
 			.pos = (Vector2){.x = 3.5f, .y = 3.5f},
 			.dir = (Vector2){.x = 0, .y = 1},
-			.angle = PI/2
-		}
+			.angle = PI/2,
+			.grid_x = 3,
+			.grid_y = 3,
+		},
 	}
 };
 
-Image images[IMAGE_COUNT];
-Texture2D textures[IMAGE_COUNT];
-
-Image image; // generate new blank image
-Texture2D canvasTex;
-
+// Image image; // generate new blank image
+// Texture2D canvasTex;
 GameState game;
 
 void game_init() {
@@ -74,19 +77,20 @@ void game_init() {
 	render = dlsym(lib, "render");
 #endif
 
-	images[e_BookShelf] = LoadImage("./assets/Bookshelf_64.png");
-	textures[e_BookShelf] = LoadTextureFromImage(images[e_BookShelf]);
+	images[MAP_0_TEXTURE] = LoadImage("./assets/Bookshelf_64.png");
+	textures[MAP_0_TEXTURE] = LoadTextureFromImage(images[MAP_0_TEXTURE]);
 
-	image = GenImageColor(CANVAS_WIDTH, CANVAS_HEIGHT, BLACK); // generate new blank image
-	canvasTex = LoadTextureFromImage(image);
+	for (int i = 0; i < MAP_COUNT; ++i) {
+		maps[i].wall_texture = textures[i];
+	}
+
+	// image = GenImageColor(CANVAS_WIDTH, CANVAS_HEIGHT, BLACK); // generate new blank image
+	// canvasTex = LoadTextureFromImage(image);
 
 	for (int i = 0; i < MAP_COUNT; ++i) {
 		game.maps[i] = maps[i];
 	}
 	game.current_map_index = 0;
-	game.canvas = canvasTex;
-	game.image = image;
-	game.wall = textures[e_BookShelf];
 }
 
 void game_shutdown() {
@@ -95,8 +99,8 @@ void game_shutdown() {
 		UnloadTexture(textures[i]);
 	}
 
-	UnloadImage(image);
-	UnloadTexture(canvasTex);
+	// UnloadImage(image);
+	// UnloadTexture(canvasTex);
 }
 
 int main(void)

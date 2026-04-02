@@ -137,11 +137,11 @@ void raycast(GameState *game) {
 		if (current_map.map[mp_correct] == WALL) {
 			float tx = distH < distV ? fmod(hx, 1.f) : fmod(vy, 1.f);
 			// BUG: need to calculate texture y as well to solve the texture bug
-			Rectangle src_rec = {tx * game->wall.width, 0, 0, game->wall.height };
+			Rectangle src_rec = {tx * current_map.wall_texture.width, 0, 0, current_map.wall_texture.height };
 			Rectangle dest_rec = {(float)r, line_offset, 1, (int)wall_height};
 			float brightness = Clamp(wall_height/CANVAS_HEIGHT, 0.f, 1.f);
 			Color tint = {WHITE.r * brightness, WHITE.g * brightness, WHITE.b * brightness, 255};
-			DrawTexturePro(game->wall, src_rec, dest_rec, (Vector2){0, 0}, 0.f, tint);
+			DrawTexturePro(current_map.wall_texture, src_rec, dest_rec, (Vector2){0, 0}, 0.f, tint);
 		} else if (current_map.map[mp_correct] == ENEMY) {
 			DrawRectangle(r, (int)line_offset, 1, (int)wall_height, RED);
 		} else {
@@ -160,32 +160,42 @@ static bool is_wall (Vector2 pos, GameState *game) {
 	return false;
 }
 
-/* keep track of the player's grid position on the 2D map
- * update it every frame using the player->pos
+/* :player_update
  * */
 static void update_player(GameState *game) {
 	Player *player = &game->maps[game->current_map_index].player;
 	int fps = GetFPS();
 	if (IsKeyDown(KEY_W)) {
 		Vector2 new_pos = Vector2Add(player->pos, Vector2Scale(player->dir, SPEED/fps));
-		if (!is_wall(new_pos, game))
+		if (!is_wall(new_pos, game)) {
+			if ((int)new_pos.y != (int)player->pos.y || (int)new_pos.x != (int)player->pos.x)
+				player->has_moved = true;
 			player->pos = new_pos;
+		}
 	}
 	if (IsKeyDown(KEY_S)) {
 		Vector2 new_pos = Vector2Subtract(player->pos, Vector2Scale(player->dir, SPEED/fps));
-		if (!is_wall(new_pos, game))
+		if (!is_wall(new_pos, game)) {
+			if ((int)new_pos.y != (int)player->pos.y || (int)new_pos.x != (int)player->pos.x)
+				player->has_moved = true;
 			player->pos = new_pos;
+		}
 	}
 	if (IsKeyDown(KEY_A)) {
 		Vector2 new_dir = {player->dir.y, -player->dir.x};
 		Vector2 new_pos = Vector2Add(Vector2Scale(new_dir, SPEED/fps), player->pos);
-		if (!is_wall(new_pos, game))
+		if (!is_wall(new_pos, game)) {
+			if ((int)new_pos.y != (int)player->pos.y || (int)new_pos.x != (int)player->pos.x)
+				player->has_moved = true;
 			player->pos = new_pos;
+		}
 	}
 	if (IsKeyDown(KEY_D)) {
 		Vector2 new_dir = {-player->dir.y, player->dir.x};
 		Vector2 new_pos = Vector2Add(Vector2Scale(new_dir, SPEED/fps), player->pos);
 		if (!is_wall(new_pos, game)) {
+			if ((int)new_pos.y != (int)player->pos.y || (int)new_pos.x != (int)player->pos.x)
+				player->has_moved = true;
 			player->pos = new_pos;
 		}
 	}
@@ -216,22 +226,32 @@ void control(GameState *game) {
 		game->current_map_index = next_map;
 }
 
-// TODO: make the enemy cell track the player grid position and move towards
-void update_map(GameState *game) {
-	Map current = game->maps[game->current_map_index];
+//:enemy_update
+// TODO: enemy collision
+void enemy_update(GameState *game) {
+	Map *current = &game->maps[game->current_map_index];
 	uint8_t *map = game->maps[game->current_map_index].map;
-	if (IsKeyPressed(KEY_N)) {
-		for (int y = 0; y < current.map_height; ++y) {
-			for (int x = 0; x < current.map_width; ++x) {
-				CellType cell = map[y * current.map_height + x];
-				if (cell == ENEMY) {
-					map[y * current.map_height + x] = SPACE;
-					map[y * current.map_height + x + 1] = ENEMY;
-					return;
-				}
+	uint8_t array_enemy[512] = {0}; // array to store the enemy movements
+	uint8_t count = 0;
+	for (int y = 0; y < current->map_height; ++y) {
+		for (int x = 0; x < current->map_width; ++x) {
+			CellType cell = map[y * current->map_width + x];
+			if (cell == ENEMY && current->player.has_moved) {
+				map[y * current->map_width + x] = SPACE;
+				int delta_y = (int)current->player.pos.y - y; // < 0 when pos_y < y
+				int delta_x = (int)current->player.pos.x - x;
+				int step_y = delta_y < 0 ? 1 : -1;
+				int step_x = delta_x < 0 ? 1 : -1;
+				if (delta_y == 0) step_y = 0;
+				if (delta_x == 0) step_x = 0;
+				array_enemy[count++] = (y-step_y) * current->map_width + x - step_x;
 			}
 		}
 	}
+	for (int i = 0; i < count; ++i) {
+		map[array_enemy[i]] = ENEMY;
+	}
+	current->player.has_moved = false;
 }
 
 /*:update logic for the game
@@ -241,15 +261,15 @@ void game_update(GameState *game) {
 	mouse_control(game);
 	control(game);
 	update_player(game);
-	update_map(game);
-	UpdateTexture(game->canvas, game->image.data);
+	enemy_update(game);
+	// UpdateTexture(game->canvas, game->image.data);
 }
 
 void render(GameState *game) {
 	game_update(game);
 	BeginDrawing();
 		ClearBackground(GetColor(BACKGROUND));
-		DrawTexture(game->canvas, 0, 0, WHITE);
+		// DrawTexture(game->canvas, 0, 0, WHITE);
 		raycast(game);
 		DrawFPS(10, 10);
 	EndDrawing();
