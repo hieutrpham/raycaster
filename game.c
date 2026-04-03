@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/types.h>
 
 static const float ray_delta = FOV * DR/CANVAS_WIDTH;
 
@@ -172,23 +173,23 @@ static void update_player_pos(Vector2 new_pos, GameState *game) {
  * */
 static void update_player(GameState *game) {
 	Player *player = &game->maps[game->current_map_index].player;
-	int fps = GetFPS();
+	float dt = GetFrameTime();
 	if (IsKeyDown(KEY_W)) {
-		Vector2 new_pos = Vector2Add(player->pos, Vector2Scale(player->dir, SPEED/fps));
+		Vector2 new_pos = Vector2Add(player->pos, Vector2Scale(player->dir, SPEED*dt));
 		update_player_pos(new_pos, game);
 	}
 	if (IsKeyDown(KEY_S)) {
-		Vector2 new_pos = Vector2Subtract(player->pos, Vector2Scale(player->dir, SPEED/fps));
+		Vector2 new_pos = Vector2Subtract(player->pos, Vector2Scale(player->dir, SPEED*dt));
 		update_player_pos(new_pos, game);
 	}
 	if (IsKeyDown(KEY_A)) {
 		Vector2 new_dir = {player->dir.y, -player->dir.x};
-		Vector2 new_pos = Vector2Add(Vector2Scale(new_dir, SPEED/fps), player->pos);
+		Vector2 new_pos = Vector2Add(Vector2Scale(new_dir, SPEED*dt), player->pos);
 		update_player_pos(new_pos, game);
 	}
 	if (IsKeyDown(KEY_D)) {
 		Vector2 new_dir = {-player->dir.y, player->dir.x};
-		Vector2 new_pos = Vector2Add(Vector2Scale(new_dir, SPEED/fps), player->pos);
+		Vector2 new_pos = Vector2Add(Vector2Scale(new_dir, SPEED*dt), player->pos);
 		update_player_pos(new_pos, game);
 	}
 }
@@ -218,12 +219,22 @@ void control(GameState *game) {
 		game->current_map_index = next_map;
 }
 
+static void array_fill(StaticArray *array, int value) {
+	for (int i = 0; i < array->count+1; ++i) {
+		if (array->items[i].value == value) {
+			array->items[i].count++;
+			return;
+		}
+	}
+	array->items[array->count] = (MemberInt){.value = value, .count = 1};
+	array->count++;
+}
+
 //:enemy_update
 void enemy_update(GameState *game) {
 	Map *current = &game->maps[game->current_map_index];
 	uint8_t *map = game->maps[game->current_map_index].map;
-	int array_enemy[512] = {0}; // array to store the enemy new positions
-	int count = 0;
+	StaticArray enemy_pos = {0};
 	int step_y, step_x;
 	for (int y = 0; y < current->map_height; ++y) {
 		for (int x = 0; x < current->map_width; ++x) {
@@ -236,7 +247,8 @@ void enemy_update(GameState *game) {
 				else step_y = delta_y < 0 ? 1 : -1;
 				if (delta_x == 0) step_x = 0;
 				else step_x = delta_x < 0 ? 1 : -1;
-				array_enemy[count++] = (y - step_y) * current->map_width + x - step_x;
+				array_fill(&enemy_pos, (y - step_y) * current->map_width + x - step_x);
+				// array_enemy[count++] = (y - step_y) * current->map_width + x - step_x;
 			}
 		}
 	}
@@ -245,8 +257,16 @@ void enemy_update(GameState *game) {
 	// if enemy collide with the FRIEND cell, it disappears
 	// ex: [120, 350, 120, 220, 120] -> 120 repeats -> set map[120] = FRIEND
 	// 350, 220 doesn't repeat -> set map[350, 220] = ENEMY
-	for (int i = 0; i < count; ++i) {
-		map[array_enemy[i]] = ENEMY;
+	// struct foo { int value; int count; }; to keep track of the repeated positions
+	// - array_enemy holds these structs foos
+	// - when iterating the map, check the value against the array_enemy.
+	// - if the value is found in any struct, just increment the count in the struct instead
+	// - if not found, appending a new struct in the array
+	for (int i = 0; i < enemy_pos.count; ++i) {
+		if (enemy_pos.items[i].count < 2)
+			map[enemy_pos.items[i].value] = ENEMY;
+		else if (enemy_pos.items[i].count >= 2)
+			map[enemy_pos.items[i].value] = FRIEND;
 	}
 	if (current->player.has_moved)
 		current->player.has_moved = false;

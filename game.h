@@ -17,6 +17,7 @@
 #define SPEED 3.f
 #define MAP_COUNT 2
 #define IMAGE_COUNT 1
+#define MAX_ARRAY_COUNT 512
 
 enum texture_enum {
 	MAP_0_TEXTURE,
@@ -49,4 +50,15 @@ typedef enum {
 	ENEMY,
 	FRIEND,
 } CellType ;
+
+typedef struct {
+	int value;
+	int count;
+} MemberInt;
+
+typedef struct {
+	MemberInt items[MAX_ARRAY_COUNT];
+	int count;
+} StaticArray;
+
 #endif // !PLUG_H
