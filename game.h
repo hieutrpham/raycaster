@@ -27,8 +27,6 @@ typedef struct
 	Vector2 pos;
 	Vector2 dir;
 	float angle;
-	uint8_t grid_x;
-	uint8_t grid_y;
 	bool has_moved;
 } Player;
 

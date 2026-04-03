@@ -1,5 +1,5 @@
 #include "raylib.h"
-#include "plug.h"
+#include "game.h"
 #include "raymath.h"
 #include <math.h>
 #include <stddef.h>
@@ -22,7 +22,7 @@ static inline int clamp_int(int value, int begin, int end) {
 	return ret;
 }
 
-//@brief :raycast algo
+//:raycast algo
 void raycast(GameState *game) {
 	Player *p = &game->maps[game->current_map_index].player;
 	Map current_map = game->maps[game->current_map_index];
@@ -160,6 +160,14 @@ static bool is_wall (Vector2 pos, GameState *game) {
 	return false;
 }
 
+static void update_player_pos(Vector2 new_pos, GameState *game) {
+	Player *player = &game->maps[game->current_map_index].player;
+	if (!is_wall(new_pos, game)) {
+		if ((int)new_pos.y != (int)player->pos.y || (int)new_pos.x != (int)player->pos.x)
+			player->has_moved = true;
+		player->pos = new_pos;
+	}
+}
 /* :player_update
  * */
 static void update_player(GameState *game) {
@@ -167,37 +175,21 @@ static void update_player(GameState *game) {
 	int fps = GetFPS();
 	if (IsKeyDown(KEY_W)) {
 		Vector2 new_pos = Vector2Add(player->pos, Vector2Scale(player->dir, SPEED/fps));
-		if (!is_wall(new_pos, game)) {
-			if ((int)new_pos.y != (int)player->pos.y || (int)new_pos.x != (int)player->pos.x)
-				player->has_moved = true;
-			player->pos = new_pos;
-		}
+		update_player_pos(new_pos, game);
 	}
 	if (IsKeyDown(KEY_S)) {
 		Vector2 new_pos = Vector2Subtract(player->pos, Vector2Scale(player->dir, SPEED/fps));
-		if (!is_wall(new_pos, game)) {
-			if ((int)new_pos.y != (int)player->pos.y || (int)new_pos.x != (int)player->pos.x)
-				player->has_moved = true;
-			player->pos = new_pos;
-		}
+		update_player_pos(new_pos, game);
 	}
 	if (IsKeyDown(KEY_A)) {
 		Vector2 new_dir = {player->dir.y, -player->dir.x};
 		Vector2 new_pos = Vector2Add(Vector2Scale(new_dir, SPEED/fps), player->pos);
-		if (!is_wall(new_pos, game)) {
-			if ((int)new_pos.y != (int)player->pos.y || (int)new_pos.x != (int)player->pos.x)
-				player->has_moved = true;
-			player->pos = new_pos;
-		}
+		update_player_pos(new_pos, game);
 	}
 	if (IsKeyDown(KEY_D)) {
 		Vector2 new_dir = {-player->dir.y, player->dir.x};
 		Vector2 new_pos = Vector2Add(Vector2Scale(new_dir, SPEED/fps), player->pos);
-		if (!is_wall(new_pos, game)) {
-			if ((int)new_pos.y != (int)player->pos.y || (int)new_pos.x != (int)player->pos.x)
-				player->has_moved = true;
-			player->pos = new_pos;
-		}
+		update_player_pos(new_pos, game);
 	}
 }
 
@@ -227,12 +219,12 @@ void control(GameState *game) {
 }
 
 //:enemy_update
-// TODO: enemy collision
 void enemy_update(GameState *game) {
 	Map *current = &game->maps[game->current_map_index];
 	uint8_t *map = game->maps[game->current_map_index].map;
-	uint8_t array_enemy[512] = {0}; // array to store the enemy movements
-	uint8_t count = 0;
+	int array_enemy[512] = {0}; // array to store the enemy new positions
+	int count = 0;
+	int step_y, step_x;
 	for (int y = 0; y < current->map_height; ++y) {
 		for (int x = 0; x < current->map_width; ++x) {
 			CellType cell = map[y * current->map_width + x];
@@ -240,18 +232,24 @@ void enemy_update(GameState *game) {
 				map[y * current->map_width + x] = SPACE;
 				int delta_y = (int)current->player.pos.y - y; // < 0 when pos_y < y
 				int delta_x = (int)current->player.pos.x - x;
-				int step_y = delta_y < 0 ? 1 : -1;
-				int step_x = delta_x < 0 ? 1 : -1;
 				if (delta_y == 0) step_y = 0;
+				else step_y = delta_y < 0 ? 1 : -1;
 				if (delta_x == 0) step_x = 0;
-				array_enemy[count++] = (y-step_y) * current->map_width + x - step_x;
+				else step_x = delta_x < 0 ? 1 : -1;
+				array_enemy[count++] = (y - step_y) * current->map_width + x - step_x;
 			}
 		}
 	}
+	// update the map with the enemy new positions
+	// TODO: enemy collision. iterate the array_enemy, find any duplicate positions
+	// if enemy collide with the FRIEND cell, it disappears
+	// ex: [120, 350, 120, 220, 120] -> 120 repeats -> set map[120] = FRIEND
+	// 350, 220 doesn't repeat -> set map[350, 220] = ENEMY
 	for (int i = 0; i < count; ++i) {
 		map[array_enemy[i]] = ENEMY;
 	}
-	current->player.has_moved = false;
+	if (current->player.has_moved)
+		current->player.has_moved = false;
 }
 
 /*:update logic for the game

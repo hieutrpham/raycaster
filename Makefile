@@ -5,7 +5,7 @@ CFLAGS = -Wall -Werror -Wextra -Wno-missing-field-initializers
 DFLAGS = -MMD -MP
 INCLUDE=-I./raylib-5.5_linux_amd64/include/
 LIB=-L. -L./raylib-5.5_linux_amd64/lib/ -l:libraylib.a -lm
-SRC = main.c plug.c
+SRC = main.c game.c
 OBJ = $(SRC:.c=.o)
 OBJ_PATH = obj/
 OBJS = $(addprefix $(OBJ_PATH), $(OBJ))
