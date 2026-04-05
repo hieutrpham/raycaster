@@ -1,11 +1,5 @@
 #include "raylib.h"
 #include "game.h"
-#include "raymath.h"
-#include <math.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <string.h>
-#include <sys/types.h>
 
 static const float ray_delta = FOV * DR/CANVAS_WIDTH;
 
@@ -25,6 +19,8 @@ static inline int clamp_int(int value, int begin, int end) {
 
 //:raycast algo
 void raycast(GameState *game) {
+	if (game->game_over)
+		return;
 	Player *p = &game->maps[game->current_map_index].player;
 	Map current_map = game->maps[game->current_map_index];
 	// uint32_t *image_data = (uint32_t *)game->image.data; // PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 32 bpp
@@ -140,7 +136,8 @@ void raycast(GameState *game) {
 			// BUG: need to calculate texture y as well to solve the texture bug
 			Rectangle src_rec = {tx * current_map.wall_texture.width, 0, 0, current_map.wall_texture.height };
 			Rectangle dest_rec = {(float)r, line_offset, 1, (int)wall_height};
-			float brightness = Clamp(wall_height/CANVAS_HEIGHT, 0.f, 1.f);
+			// float brightness = Clamp(wall_height/CANVAS_HEIGHT, 0.f, 1.f);
+			float brightness = 1.f;
 			Color tint = {WHITE.r * brightness, WHITE.g * brightness, WHITE.b * brightness, 255};
 			DrawTexturePro(current_map.wall_texture, src_rec, dest_rec, (Vector2){0, 0}, 0.f, tint);
 		} else if (current_map.map[mp_correct] == ENEMY) {
@@ -156,7 +153,7 @@ void raycast(GameState *game) {
 static bool is_wall (Vector2 pos, GameState *game) {
 	Map map = game->maps[game->current_map_index];
 	int mp = (int)pos.y * map.map_width + (int)pos.x;
-	if (mp > 0 && mp < map.map_width * map.map_height && map.map[mp] == WALL)
+	if (mp >= 0 && mp < map.map_width * map.map_height && map.map[mp] == WALL)
 		return true;
 	return false;
 }
@@ -196,8 +193,8 @@ static void update_player(GameState *game) {
 
 void mouse_control(GameState *game) {
 	Player *p = &game->maps[game->current_map_index].player;
-	int delta_x = GetMouseX() - CANVAS_WIDTH/2;
-	p->angle += delta_x * MOUSE_SENSITIVITY;
+	int dist_x = GetMouseX() - CANVAS_WIDTH/2;
+	p->angle += dist_x * MOUSE_SENSITIVITY;
 	if (p->angle < 0)
 		p->angle += 2 * PI;
 	if (p->angle > 2 * PI)
@@ -219,57 +216,72 @@ void control(GameState *game) {
 		game->current_map_index = next_map;
 }
 
-static void array_fill(StaticArray *array, int value) {
-	for (int i = 0; i < array->count+1; ++i) {
+static void array_fill(Map *map, StaticArray *array, int value) {
+	if (array->count >= MAX_ARRAY_COUNT)
+		return;
+	if (value < 0 || value > map->map_width * map->map_height)
+		return;
+	for (int i = 0; i < array->count; ++i) {
 		if (array->items[i].value == value) {
 			array->items[i].count++;
 			return;
 		}
 	}
-	array->items[array->count] = (MemberInt){.value = value, .count = 1};
-	array->count++;
+	array->items[array->count++] = (MemberInt){.value = value, .count = 1};
 }
 
 //:enemy_update
 void enemy_update(GameState *game) {
-	Map *current = &game->maps[game->current_map_index];
+	Map *current_map = &game->maps[game->current_map_index];
+	if (!current_map->player.has_moved)
+		return;
 	uint8_t *map = game->maps[game->current_map_index].map;
-	StaticArray enemy_pos = {0};
-	int step_y, step_x;
-	for (int y = 0; y < current->map_height; ++y) {
-		for (int x = 0; x < current->map_width; ++x) {
-			CellType cell = map[y * current->map_width + x];
-			if (cell == ENEMY && current->player.has_moved) {
-				map[y * current->map_width + x] = SPACE;
-				int delta_y = (int)current->player.pos.y - y; // < 0 when pos_y < y
-				int delta_x = (int)current->player.pos.x - x;
-				if (delta_y == 0) step_y = 0;
-				else step_y = delta_y < 0 ? 1 : -1;
-				if (delta_x == 0) step_x = 0;
-				else step_x = delta_x < 0 ? 1 : -1;
-				array_fill(&enemy_pos, (y - step_y) * current->map_width + x - step_x);
-				// array_enemy[count++] = (y - step_y) * current->map_width + x - step_x;
+	StaticArray enemy_new_pos = {0};
+	StaticArray enemy_old_pos = {0};
+	for (int y = 0; y < current_map->map_height; ++y) {
+		for (int x = 0; x < current_map->map_width; ++x) {
+			int map_pos = y * current_map->map_width + x;
+			if (map[map_pos] == ENEMY) {
+				int player_pos_x = (int)current_map->player.pos.x;
+				int player_pos_y = (int)current_map->player.pos.y;
+				int next_x, next_y;
+
+				enemy_old_pos.items[enemy_old_pos.count++].value = map_pos;
+
+				if (x < player_pos_x)
+					next_x = x + 1;
+				else if (x > player_pos_x)
+					next_x = x - 1;
+				if (y < player_pos_y)
+					next_y = y + 1;
+				else if (y > player_pos_y)
+					next_y = y - 1;
+
+				if (x == player_pos_x && y == player_pos_y) {
+					game->game_over = true;
+				}
+
+				array_fill(current_map, &enemy_new_pos, next_y * current_map->map_width + next_x);
 			}
 		}
 	}
-	// update the map with the enemy new positions
-	// TODO: enemy collision. iterate the array_enemy, find any duplicate positions
-	// if enemy collide with the FRIEND cell, it disappears
-	// ex: [120, 350, 120, 220, 120] -> 120 repeats -> set map[120] = FRIEND
-	// 350, 220 doesn't repeat -> set map[350, 220] = ENEMY
-	// struct foo { int value; int count; }; to keep track of the repeated positions
-	// - array_enemy holds these structs foos
-	// - when iterating the map, check the value against the array_enemy.
-	// - if the value is found in any struct, just increment the count in the struct instead
-	// - if not found, appending a new struct in the array
-	for (int i = 0; i < enemy_pos.count; ++i) {
-		if (enemy_pos.items[i].count < 2)
-			map[enemy_pos.items[i].value] = ENEMY;
-		else if (enemy_pos.items[i].count >= 2)
-			map[enemy_pos.items[i].value] = FRIEND;
+	for (int i = 0; i < enemy_old_pos.count; ++i) {
+		int new = enemy_old_pos.items[i].value;
+		if (new < 0 || new >= current_map->map_width * current_map->map_height)
+			continue;
+		map[new] = SPACE;
 	}
-	if (current->player.has_moved)
-		current->player.has_moved = false;
+	for (int i = 0; i < enemy_new_pos.count; ++i) {
+		int new = enemy_new_pos.items[i].value;
+		if (new < 0 || new >= current_map->map_width * current_map->map_height)
+			continue;
+		if (enemy_new_pos.items[i].count < 2 && enemy_new_pos.items[i].count >= 1)
+			map[new] = ENEMY;
+		else if (enemy_new_pos.items[i].count >= 2) {
+			map[new] = FRIEND;
+		}
+	}
+	current_map->player.has_moved = false;
 }
 
 /*:update logic for the game
@@ -286,9 +298,14 @@ void game_update(GameState *game) {
 void render(GameState *game) {
 	game_update(game);
 	BeginDrawing();
-		ClearBackground(GetColor(BACKGROUND));
-		// DrawTexture(game->canvas, 0, 0, WHITE);
-		raycast(game);
-		DrawFPS(10, 10);
+	ClearBackground(GetColor(BACKGROUND));
+	// DrawTexture(game->canvas, 0, 0, WHITE);
+	raycast(game);
+	if (game->game_over) {
+		const char *text = "You died!";
+		int text_size = MeasureText(text, 200);
+		DrawText(text, CANVAS_WIDTH/2 - text_size/2, CANVAS_HEIGHT/2 - 200/2, 200, BLUE);
+	}
+	DrawFPS(10, 10);
 	EndDrawing();
 }

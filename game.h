@@ -1,9 +1,14 @@
 #ifndef PLUG_H
 #define PLUG_H
 
-#include <dlfcn.h>
+#include <stdlib.h>
+#include "raymath.h"
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+#include <dlfcn.h>
 #include "raylib.h"
 #include <math.h>
 
@@ -17,7 +22,7 @@
 #define SPEED 3.f
 #define MAP_COUNT 2
 #define IMAGE_COUNT 1
-#define MAX_ARRAY_COUNT 512
+#define MAX_ARRAY_COUNT 32
 
 enum texture_enum {
 	MAP_0_TEXTURE,
@@ -42,6 +47,7 @@ typedef struct {
 typedef struct {
 	Map maps[MAP_COUNT];
 	int current_map_index;
+	bool game_over;
 } GameState;
 
 typedef enum {
