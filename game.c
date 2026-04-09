@@ -1,6 +1,12 @@
 #include "raylib.h"
 #include "game.h"
 
+/* TODO:
+ - implement minimap
+ - start screen
+ - continue screen to the next map
+*/
+
 static const float ray_delta = FOV * DR/CANVAS_WIDTH;
 
 static inline bool hit_wall(int pos, Map current_map) {
@@ -134,7 +140,7 @@ void raycast(GameState *game) {
 		if (current_map.map[mp_correct] == WALL) {
 			float tx = distH < distV ? fmod(hx, 1.f) : fmod(vy, 1.f);
 			// BUG: need to calculate texture y as well to solve the texture bug
-			Rectangle src_rec = {tx * current_map.wall_texture.width, 0, 0, current_map.wall_texture.height };
+			Rectangle src_rec = {tx * current_map.wall_texture.width, 0, 1, current_map.wall_texture.height };
 			Rectangle dest_rec = {(float)r, line_offset, 1, (int)wall_height};
 			// float brightness = Clamp(wall_height/CANVAS_HEIGHT, 0.f, 1.f);
 			float brightness = 1.f;
@@ -153,7 +159,7 @@ void raycast(GameState *game) {
 static bool is_wall (Vector2 pos, GameState *game) {
 	Map map = game->maps[game->current_map_index];
 	int mp = (int)pos.y * map.map_width + (int)pos.x;
-	if (mp >= 0 && mp < map.map_width * map.map_height && map.map[mp] == WALL)
+	if (mp >= 0 && mp < map.map_width * map.map_height && map.map[mp] == WALL && map.map[mp] == FRIEND)
 		return true;
 	return false;
 }
@@ -233,19 +239,23 @@ static void array_fill(Map *map, StaticArray *array, int value) {
 //:enemy_update
 void enemy_update(GameState *game) {
 	Map *current_map = &game->maps[game->current_map_index];
+	if (!current_map)
+		return;
 	if (!current_map->player.has_moved)
 		return;
 	uint8_t *map = game->maps[game->current_map_index].map;
 	StaticArray enemy_new_pos = {0};
 	StaticArray enemy_old_pos = {0};
+	int player_pos_x = (int)current_map->player.pos.x;
+	int player_pos_y = (int)current_map->player.pos.y;
 	for (int y = 0; y < current_map->map_height; ++y) {
 		for (int x = 0; x < current_map->map_width; ++x) {
 			int map_pos = y * current_map->map_width + x;
 			if (map[map_pos] == ENEMY) {
-				int player_pos_x = (int)current_map->player.pos.x;
-				int player_pos_y = (int)current_map->player.pos.y;
+				if (x == player_pos_x && y == player_pos_y) {
+					game->game_over = true;
+				}
 				int next_x, next_y;
-
 				enemy_old_pos.items[enemy_old_pos.count++].value = map_pos;
 
 				if (x < player_pos_x)
@@ -257,11 +267,9 @@ void enemy_update(GameState *game) {
 				else if (y > player_pos_y)
 					next_y = y - 1;
 
-				if (x == player_pos_x && y == player_pos_y) {
-					game->game_over = true;
-				}
-
-				array_fill(current_map, &enemy_new_pos, next_y * current_map->map_width + next_x);
+				int pos = next_y * current_map->map_width + next_x;
+				if (!hit_wall(pos, *current_map))
+					array_fill(current_map, &enemy_new_pos, pos);
 			}
 		}
 	}
@@ -295,17 +303,21 @@ void game_update(GameState *game) {
 	// UpdateTexture(game->canvas, game->image.data);
 }
 
+void game_over_screen(GameState *game) {
+	if (game->game_over) {
+		const char *text = "You died!";
+		int text_size = MeasureText(text, 200);
+		DrawText(text, CANVAS_WIDTH/2 - text_size/2, CANVAS_HEIGHT/2 - 200/2, 200, BLUE);
+	}
+}
+
 void render(GameState *game) {
 	game_update(game);
 	BeginDrawing();
 	ClearBackground(GetColor(BACKGROUND));
 	// DrawTexture(game->canvas, 0, 0, WHITE);
 	raycast(game);
-	if (game->game_over) {
-		const char *text = "You died!";
-		int text_size = MeasureText(text, 200);
-		DrawText(text, CANVAS_WIDTH/2 - text_size/2, CANVAS_HEIGHT/2 - 200/2, 200, BLUE);
-	}
+	game_over_screen(game);
 	DrawFPS(10, 10);
 	EndDrawing();
 }
