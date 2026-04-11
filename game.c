@@ -1,16 +1,23 @@
 #include "raylib.h"
+#include <raymath.h>
 #include "game.h"
-
-/* TODO:
- - implement minimap
- - start screen
- - continue screen to the next map
-*/
 
 static const float ray_delta = FOV * DR/CANVAS_WIDTH;
 
+// used in gameplay logic
+// check if the position is within the bounds of the map
+// return: true if in bound, false if not
+static bool is_wall (Vector2 pos, GameState *game) {
+	Map map = game->maps[game->current_map_index];
+	int mp = (int)pos.y * map.map_width + (int)pos.x;
+	if (mp >= 0 && mp < map.map_width * map.map_height && (map.map[mp] == WALL || map.map[mp] == FRIEND))
+		return true;
+	return false;
+}
+
+// used in raycast rendering logic
 static inline bool hit_wall(int pos, Map current_map) {
-	return (pos > 0 && pos < current_map.map_width * current_map.map_height
+	return (pos >= 0 && pos < current_map.map_width * current_map.map_height
 			&& current_map.map[pos] > SPACE && current_map.map[pos] < 0xff);
 }
 
@@ -128,8 +135,6 @@ void raycast(GameState *game) {
 
 		// NOTE: draw wall
 		float wall_height = PROJECTION_DIST/corrected_dist;
-		if (wall_height > CANVAS_HEIGHT)
-			wall_height = CANVAS_HEIGHT;
 		float line_offset = (CANVAS_HEIGHT - wall_height)/2.0f;
 
 		mph = clamp_int(mph, 0, map_size);
@@ -137,13 +142,12 @@ void raycast(GameState *game) {
 
 		size_t mp_correct = distV > distH ? mph : mpv;
 
+		float brightness = Clamp(wall_height/CANVAS_HEIGHT, 0.f, 1.f);
+		// float brightness = 1.f;
 		if (current_map.map[mp_correct] == WALL) {
 			float tx = distH < distV ? fmod(hx, 1.f) : fmod(vy, 1.f);
-			// BUG: need to calculate texture y as well to solve the texture bug
 			Rectangle src_rec = {tx * current_map.wall_texture.width, 0, 1, current_map.wall_texture.height };
 			Rectangle dest_rec = {(float)r, line_offset, 1, (int)wall_height};
-			// float brightness = Clamp(wall_height/CANVAS_HEIGHT, 0.f, 1.f);
-			float brightness = 1.f;
 			Color tint = {WHITE.r * brightness, WHITE.g * brightness, WHITE.b * brightness, 255};
 			DrawTexturePro(current_map.wall_texture, src_rec, dest_rec, (Vector2){0, 0}, 0.f, tint);
 		} else if (current_map.map[mp_correct] == ENEMY) {
@@ -152,16 +156,6 @@ void raycast(GameState *game) {
 			DrawRectangle(r, (int)line_offset, 1, (int)wall_height, GREEN);
 		}
 	}
-}
-
-// check if the position is within the bounds of the map
-// return: true if in bound, false if not
-static bool is_wall (Vector2 pos, GameState *game) {
-	Map map = game->maps[game->current_map_index];
-	int mp = (int)pos.y * map.map_width + (int)pos.x;
-	if (mp >= 0 && mp < map.map_width * map.map_height && map.map[mp] == WALL && map.map[mp] == FRIEND)
-		return true;
-	return false;
 }
 
 static void update_player_pos(Vector2 new_pos, GameState *game) {
@@ -220,20 +214,6 @@ void control(GameState *game) {
 		p->pos = (Vector2){map.map_width/2, map.map_height/2};
 	if (IsKeyPressed(KEY_M)) // change map
 		game->current_map_index = next_map;
-}
-
-static void array_fill(Map *map, StaticArray *array, int value) {
-	if (array->count >= MAX_ARRAY_COUNT)
-		return;
-	if (value < 0 || value > map->map_width * map->map_height)
-		return;
-	for (int i = 0; i < array->count; ++i) {
-		if (array->items[i].value == value) {
-			array->items[i].count++;
-			return;
-		}
-	}
-	array->items[array->count++] = (MemberInt){.value = value, .count = 1};
 }
 
 //:enemy_update
@@ -311,6 +291,43 @@ void game_over_screen(GameState *game) {
 	}
 }
 
+// :minimap
+// render player moving on minimap
+// static float aspect_ratio = CANVAS_WIDTH/CANVAS_HEIGHT;
+static float aspect_ratio = 1.f;
+static float scale_x = 1.f*10;
+static float scale_y = 1.f*10;
+// static float scale_x = CANVAS_WIDTH/100;
+// static float scale_y = CANVAS_HEIGHT/100;
+
+void draw_minimap(GameState *game) {
+	int size_w = 10;
+	int size_h = 10;
+	Map map = game->maps[game->current_map_index];
+	float player_x = map.player.pos.x;
+	float player_y = map.player.pos.y;
+	for (int y = 0; y < map.map_height; ++y) {
+		for (int x = 0; x < map.map_width; ++x) {
+			int mp = y * map.map_width + x;
+			switch (map.map[mp]) {
+				case WALL:
+					DrawRectangle(x*aspect_ratio*scale_x, y*scale_y, size_w, size_h, YELLOW);
+				break;
+				case ENEMY:
+					DrawRectangle(x*aspect_ratio*scale_x, y*scale_y, 5, 5, RED);
+				break;
+				case FRIEND:
+					DrawRectangle(x*aspect_ratio*scale_x, y*scale_y, 5, 5, GREEN);
+				break;
+			}
+		}
+	}
+	DrawRectangle(player_x*aspect_ratio*scale_x, player_y*scale_y, 5, 5, BLUE);
+	Vector2 p = {player_x*aspect_ratio*scale_x + 0.5f, player_y*scale_y + 0.5f};
+	Vector2 d = {map.player.dir.x*aspect_ratio*scale_x*5, map.player.dir.y*scale_y*5};
+	DrawLineV(p, Vector2Add(p, d), BLUE);
+}
+
 void render(GameState *game) {
 	game_update(game);
 	BeginDrawing();
@@ -319,5 +336,6 @@ void render(GameState *game) {
 	raycast(game);
 	game_over_screen(game);
 	DrawFPS(10, 10);
+	draw_minimap(game);
 	EndDrawing();
 }

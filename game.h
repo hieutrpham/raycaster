@@ -1,5 +1,4 @@
-#ifndef PLUG_H
-#define PLUG_H
+#pragma once
 
 #include <stdlib.h>
 #include "raymath.h"
@@ -67,4 +66,4 @@ typedef struct {
 	int count;
 } StaticArray;
 
-#endif // !PLUG_H
+void array_fill(Map *map, StaticArray *array, int value);
