@@ -41,10 +41,11 @@ void test_array_fill() {
 	assert(test_array.count == 3);
 	assert(test_array.items[0].count == 3);
 	assert(test_array.items[0].value == 12);
-	print_array(test_array);
+	// print_array(test_array);
 }
 
 int main() {
 	test_array_fill();
 	printf("All tests passed!\n");
+	return 0;
 }
