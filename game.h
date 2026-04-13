@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdlib.h>
+#include "raylib.h" // include raylib before any other modules to avoid redefinition
 #include "raymath.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -8,7 +9,6 @@
 #include <string.h>
 #include <sys/types.h>
 #include <dlfcn.h>
-#include "raylib.h"
 #include <math.h>
 
 #define MOUSE_SENSITIVITY 0.001f

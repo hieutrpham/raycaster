@@ -239,7 +239,8 @@ void enemy_update(GameState *game) {
 				if (x == player_pos_x && y == player_pos_y) {
 					game->game_over = true;
 				}
-				int next_x, next_y;
+				int next_x = x;
+				int next_y = y;
 				enemy_old_pos.items[enemy_old_pos.count++].value = map_pos;
 
 				if (x < player_pos_x)

@@ -1,5 +1,4 @@
 #include "game.h"
-#include "raylib.h"
 
 #ifdef HOT_RELOAD
 void (*render)(GameState *game);
