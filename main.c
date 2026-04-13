@@ -7,9 +7,6 @@ void (*render)(GameState *game);
 void render(GameState *game);
 #endif
 
-Image images[IMAGE_COUNT];
-Texture2D textures[IMAGE_COUNT];
-
 Map maps[MAP_COUNT] = {
 #define P (0xff) // denote player on the map
 {
@@ -81,9 +78,9 @@ Map maps[MAP_COUNT] = {
 #undef P
 };
 
-// Image image; // generate new blank image
-// Texture2D canvasTex;
-GameState game;
+Texture2D textures[TEXTURE_COUNT];
+
+GameState game = {};
 
 void game_init() {
 #ifdef HOT_RELOAD
@@ -94,30 +91,26 @@ void game_init() {
 	render = dlsym(lib, "render");
 #endif
 
-	images[MAP_0_TEXTURE] = LoadImage("./assets/Bookshelf_64.png");
-	textures[MAP_0_TEXTURE] = LoadTextureFromImage(images[MAP_0_TEXTURE]);
-
-	for (int i = 0; i < MAP_COUNT; ++i) {
-		maps[i].wall_texture = textures[i];
-	}
-
-	// image = GenImageColor(CANVAS_WIDTH, CANVAS_HEIGHT, BLACK); // generate new blank image
-	// canvasTex = LoadTextureFromImage(image);
+	textures[MAP_0_TEXTURE] = LoadTexture("./assets/Bookshelf_64.png");
+	textures[MAP_1_TEXTURE] = LoadTexture("./assets/Grass_with_Flowers_64.png");
+	textures[ENEMY_TEXTURE] = LoadTexture("./assets/SPace_64.png");
+	textures[FRIEND_TEXTURE] = LoadTexture("./assets/chairman_128.png");
 
 	for (int i = 0; i < MAP_COUNT; ++i) {
 		game.maps[i] = maps[i];
 	}
+
+	game.enemy_texture = textures[ENEMY_TEXTURE];
+	game.friend_texture = textures[FRIEND_TEXTURE];
+	game.maps[0].wall_texture = textures[MAP_0_TEXTURE];
+	game.maps[1].wall_texture = textures[MAP_1_TEXTURE];
 	game.current_map_index = 0;
 }
 
 void game_shutdown() {
-	for (int i = 0; i < IMAGE_COUNT; ++i) {
-		UnloadImage(images[i]);
+	for (int i = 0; i < TEXTURE_COUNT; ++i) {
 		UnloadTexture(textures[i]);
 	}
-
-	// UnloadImage(image);
-	// UnloadTexture(canvasTex);
 }
 
 int main(void)

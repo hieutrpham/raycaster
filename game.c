@@ -142,20 +142,24 @@ void raycast(GameState *game) {
 
 		size_t mp_correct = distV > distH ? mph : mpv;
 
-		float brightness = Clamp(wall_height/CANVAS_HEIGHT, 0.f, 1.f);
-		// float brightness = 1.f;
+		float tx = distH < distV ? fmod(hx, 1.f) : fmod(vy, 1.f);
 		if (current_map.map[mp_correct] == WALL) {
-			float tx = distH < distV ? fmod(hx, 1.f) : fmod(vy, 1.f);
-			Rectangle src_rec = {tx * current_map.wall_texture.width, 0, 1, current_map.wall_texture.height };
-			Rectangle dest_rec = {(float)r, line_offset, 1, (int)wall_height};
-			Color tint = {WHITE.r * brightness, WHITE.g * brightness, WHITE.b * brightness, 255};
-			DrawTexturePro(current_map.wall_texture, src_rec, dest_rec, (Vector2){0, 0}, 0.f, tint);
+			draw_texture(current_map.wall_texture, tx, (float)r, line_offset, wall_height, WHITE);
 		} else if (current_map.map[mp_correct] == ENEMY) {
-			DrawRectangle(r, (int)line_offset, 1, (int)wall_height, RED);
+			draw_texture(game->enemy_texture, tx, (float)r, line_offset, wall_height, WHITE);
 		} else {
-			DrawRectangle(r, (int)line_offset, 1, (int)wall_height, GREEN);
+			draw_texture(game->friend_texture, tx, (float)r, line_offset, wall_height, WHITE);
 		}
 	}
+}
+
+void draw_texture(Texture2D texture, float tx, float dest_x, float dest_y, float dest_height, Color color) {
+	// float brightness = Clamp(dest_height/CANVAS_HEIGHT, 0.f, 1.f);
+	float brightness = 1.f;
+	Rectangle src_rec = {tx * texture.width, 0, 1, texture.height};
+	Rectangle dest_rec = {dest_x, dest_y, 1, dest_height};
+	Color tint = {color.r * brightness, color.g * brightness, color.b * brightness, 255};
+	DrawTexturePro(texture, src_rec, dest_rec, (Vector2){0, 0}, 0.f, tint);
 }
 
 static void update_player_pos(Vector2 new_pos, GameState *game) {
@@ -323,7 +327,7 @@ void draw_minimap(GameState *game) {
 		}
 	}
 	DrawRectangle(player_x*aspect_ratio*scale_x, player_y*scale_y, 5, 5, BLUE);
-	Vector2 p = {player_x*aspect_ratio*scale_x + 0.5f, player_y*scale_y + 0.5f};
+	Vector2 p = {player_x*aspect_ratio*scale_x + 2.5f, player_y*scale_y + 2.5f};
 	Vector2 d = {map.player.dir.x*aspect_ratio*scale_x*5, map.player.dir.y*scale_y*5};
 	DrawLineV(p, Vector2Add(p, d), BLUE);
 }

@@ -19,12 +19,15 @@
 #define PROJECTION_DIST 1662.0f
 #define FOV 60.0f
 #define SPEED 3.f
-#define MAP_COUNT 2
-#define IMAGE_COUNT 1
+#define MAP_COUNT 16
+#define TEXTURE_COUNT 16
 #define MAX_ARRAY_COUNT 32
 
 enum texture_enum {
 	MAP_0_TEXTURE,
+	MAP_1_TEXTURE,
+	ENEMY_TEXTURE,
+	FRIEND_TEXTURE,
 };
 
 typedef struct
@@ -45,6 +48,8 @@ typedef struct {
 
 typedef struct {
 	Map maps[MAP_COUNT];
+	Texture2D enemy_texture;
+	Texture2D friend_texture;
 	int current_map_index;
 	bool game_over;
 } GameState;
@@ -67,3 +72,4 @@ typedef struct {
 } StaticArray;
 
 void array_fill(Map *map, StaticArray *array, int value);
+void draw_texture(Texture2D texture, float tx, float dest_x, float dest_y, float dest_height, Color color);

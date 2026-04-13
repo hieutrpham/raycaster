@@ -3,6 +3,7 @@
 
 # whitelist directory
 !*/
+!./assets/*
 
 # whitelist hpp, cpp
 !*.*pp
@@ -11,3 +12,5 @@
 
 # whitelist makefile
 !Makefile
+
+!*.md
