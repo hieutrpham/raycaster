@@ -32,8 +32,6 @@ static inline int clamp_int(int value, int begin, int end) {
 
 //:raycast algo
 void raycast(GameState *game) {
-	if (game->game_over)
-		return;
 	Player *p = &game->maps[game->current_map_index].player;
 	Map current_map = game->maps[game->current_map_index];
 	// uint32_t *image_data = (uint32_t *)game->image.data; // PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 32 bpp
@@ -237,7 +235,8 @@ void enemy_update(GameState *game) {
 			int map_pos = y * current_map->map_width + x;
 			if (map[map_pos] == ENEMY) {
 				if (x == player_pos_x && y == player_pos_y) {
-					game->game_over = true;
+					game->screen_type = END_SCREEN;
+					return;
 				}
 				int next_x, next_y;
 				enemy_old_pos.items[enemy_old_pos.count++].value = map_pos;
@@ -287,12 +286,13 @@ void game_update(GameState *game) {
 	// UpdateTexture(game->canvas, game->image.data);
 }
 
+// TODO: add restart and quit button
 void game_over_screen(GameState *game) {
-	if (game->game_over) {
-		const char *text = "You died!";
-		int text_size = MeasureText(text, 200);
-		DrawText(text, CANVAS_WIDTH/2 - text_size/2, CANVAS_HEIGHT/2 - 200/2, 200, BLUE);
-	}
+	ShowCursor();
+	draw_text_middle("You died!", 200, BLUE);
+	Vector2 mouse_pos = GetMousePosition();
+	Rectangle start_rec = {.x = CANVAS_WIDTH/2, .y = CANVAS_HEIGHT/2 + 100, .width = 100, .height = 40};
+	interactive_button(game, GAME_SCREEN, mouse_pos, start_rec, "Restart");
 }
 
 // :minimap
@@ -332,14 +332,77 @@ void draw_minimap(GameState *game) {
 	DrawLineV(p, Vector2Add(p, d), BLUE);
 }
 
+/* :draw_button function
+ * calculate the rectangle width, height based on the text width and font size
+ * also need to pass in an origin vector
+*/
+void draw_button(const char *text, int fontSize, Color color_rec, Color color_text, Vector2 origin) {
+	// const int padding = 5;
+	int text_width = MeasureText(text, fontSize);
+	Rectangle rec = {.x = origin.x, .y = origin.y, .width = text_width, .height = fontSize};
+	DrawRectangleRec(rec, color_rec);
+	DrawText(text, origin.x, origin.y, fontSize, color_text);
+}
+
+void test_screen() {
+	ClearBackground(DARKPURPLE);
+}
+
+// :button with side effect
+void interactive_button (GameState *game, GameScreen screen_type, Vector2 mouse_pos, Rectangle rec, const char *str) {
+	if (CheckCollisionPointRec(mouse_pos, rec)) {
+		draw_button(str, 40, ORANGE, WHITE, (Vector2){.x = rec.x, .y = rec.y});
+		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+			game->screen_type = screen_type;
+	}
+	else
+		draw_button(str, 40, GREEN, WHITE, (Vector2){.x = rec.x, .y = rec.y});
+}
+
+void draw_text_middle(const char* str, const int size, Color color) {
+	int str_width = MeasureText(str, size);
+	DrawText(str, CANVAS_WIDTH/2-str_width/2, CANVAS_HEIGHT/2 - size/2, size, color);
+}
+
+// TODO: add support for buttons navigation
+// :start_screen
+void start_screen(GameState *game) {
+	ClearBackground(DARKBLUE);
+	draw_text_middle("Angry Cubes", 100, RED);
+	Vector2 mouse_pos = GetMousePosition();
+	const int padding = 50;
+	Rectangle start_rec = {.x = CANVAS_WIDTH/2, .y = CANVAS_HEIGHT/2, .width = 100, .height = 40};
+	interactive_button(game, GAME_SCREEN, mouse_pos, start_rec, "start");
+
+	Rectangle test_rec = {.x = CANVAS_WIDTH/2, .y = CANVAS_HEIGHT/2 + padding, .width = 100, .height = 40};
+	interactive_button(game, TEST_SCREEN, mouse_pos, test_rec, "test");
+
+	Rectangle end_rec = {.x = CANVAS_WIDTH/2, .y = CANVAS_HEIGHT/2 + padding*2, .width = 100, .height = 40};
+	interactive_button(game, END_SCREEN, mouse_pos, end_rec, "quit");
+}
+
 void render(GameState *game) {
-	game_update(game);
 	BeginDrawing();
 	ClearBackground(GetColor(BACKGROUND));
-	// DrawTexture(game->canvas, 0, 0, WHITE);
-	raycast(game);
-	game_over_screen(game);
-	DrawFPS(10, 10);
+
+	switch (game->screen_type) {
+		case START_SCREEN:
+			ShowCursor();
+			start_screen(game);
+			break;
+		case TEST_SCREEN:
+			test_screen();
+			break;
+		case GAME_SCREEN:
+			HideCursor();
+			game_update(game);
+			raycast(game);
+			break;
+		case END_SCREEN:
+			game_over_screen(game);
+			break;
+	}
+	// DrawFPS(10, 10);
 	draw_minimap(game);
 	EndDrawing();
 }

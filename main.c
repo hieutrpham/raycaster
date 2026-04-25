@@ -115,10 +115,9 @@ void game_shutdown() {
 
 int main(void)
 {
-	InitWindow(CANVAS_WIDTH, CANVAS_HEIGHT, "Raycaster");
+	InitWindow(CANVAS_WIDTH, CANVAS_HEIGHT, "Angry Cubes");
 	game_init();
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-	HideCursor();
 
 	while (!WindowShouldClose()) {
 		#ifdef HOT_RELOAD

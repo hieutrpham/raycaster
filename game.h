@@ -46,12 +46,19 @@ typedef struct {
 	Player player;
 } Map;
 
+typedef enum {
+	START_SCREEN,
+	GAME_SCREEN,
+	TEST_SCREEN,
+	END_SCREEN,
+} GameScreen;
+
 typedef struct {
 	Map maps[MAP_COUNT];
 	Texture2D enemy_texture;
 	Texture2D friend_texture;
 	int current_map_index;
-	bool game_over;
+	GameScreen screen_type;
 } GameState;
 
 typedef enum {
@@ -73,3 +80,5 @@ typedef struct {
 
 void array_fill(Map *map, StaticArray *array, int value);
 void draw_texture(Texture2D texture, float tx, float dest_x, float dest_y, float dest_height, Color color);
+void interactive_button (GameState *game, GameScreen screen_type, Vector2 mouse_pos, Rectangle rec, const char *str);
+void draw_text_middle(const char* str, const int size, Color color);
