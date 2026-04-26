@@ -34,8 +34,6 @@ static inline int clamp_int(int value, int begin, int end) {
 void raycast(GameState *game) {
 	Player *p = &game->maps[game->current_map_index].player;
 	Map current_map = game->maps[game->current_map_index];
-	// uint32_t *image_data = (uint32_t *)game->image.data; // PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 32 bpp
-	// bzero(image_data, game->image.width * game->image.height * 4);
 	size_t mx, my, mph = 0, mpv = 0; // map coordinates
 	float step_y, step_x; // DDA steps
 	float ra = p->angle - 30.0f * DR; // FOV = 60
@@ -283,28 +281,20 @@ void game_update(GameState *game) {
 	control(game);
 	update_player(game);
 	enemy_update(game);
-	// UpdateTexture(game->canvas, game->image.data);
 }
 
 // TODO: add restart and quit button
 void game_over_screen(GameState *game) {
+	(void)game;
 	ShowCursor();
-	draw_text_middle("You died!", 200, BLUE);
-	Vector2 mouse_pos = GetMousePosition();
-	Rectangle start_rec = {.x = CANVAS_WIDTH/2, .y = CANVAS_HEIGHT/2 + 100, .width = 100, .height = 40};
-	interactive_button(game, GAME_SCREEN, mouse_pos, start_rec, "Restart");
+	draw_text_center("You died!", 200, BLUE);
 }
 
 // :minimap
-// render player moving on minimap
-// static float aspect_ratio = CANVAS_WIDTH/CANVAS_HEIGHT;
-static float aspect_ratio = 1.f;
-static float scale_x = 1.f*10;
-static float scale_y = 1.f*10;
-// static float scale_x = CANVAS_WIDTH/100;
-// static float scale_y = CANVAS_HEIGHT/100;
-
 void draw_minimap(GameState *game) {
+	float aspect_ratio = 1.f;
+	float scale_x = 1.f*10;
+	float scale_y = 1.f*10;
 	int size_w = 10;
 	int size_h = 10;
 	Map map = game->maps[game->current_map_index];
@@ -344,8 +334,51 @@ void draw_button(const char *text, int fontSize, Color color_rec, Color color_te
 	DrawText(text, origin.x, origin.y, fontSize, color_text);
 }
 
-void test_screen() {
+// :test
+typedef struct {
+	Rectangle rec;
+	Color button_color;
+	const char *name;
+	int font_size;
+	bool is_hovered;
+} Button;
+
+Button init_button(const char *name, int font_size, Vector2 origin, Color color) {
+	Button b = {0};
+	int text_width = MeasureText(name, font_size);
+	b.name = name;
+	b.font_size = font_size;
+	b.rec = (Rectangle){.x = origin.x, .y = origin.y, .width = text_width, .height = font_size};
+	b.button_color = color;
+	return b;
+}
+
+void render_button(Button b) {
+	DrawRectangleRec(b.rec, b.button_color);
+	DrawText(b.name, b.rec.x, b.rec.y, b.font_size, WHITE);
+}
+
+void test_screen(GameState *game) {
+	(void)game;
 	ClearBackground(DARKPURPLE);
+	Vector2 mouse_pos = GetMousePosition();
+	const int padding = 50;
+	Vector2 origin = {CANVAS_WIDTH/2, CANVAS_HEIGHT/2};
+	Button start_button = init_button("start", 40, origin, GREEN);
+	Button test_button = init_button("test", 40, (Vector2){origin.x, origin.y + padding}, GREEN);
+	Button end_button = init_button("end", 40, (Vector2){origin.x, origin.y + padding*2}, GREEN);
+	static int index = -1;
+	Button button_array[] = {start_button, test_button, end_button};
+	if (IsKeyPressed(KEY_J))
+		index = (index + 1) % ARRAY_LEN(button_array);
+	for (int i = 0; i < (int)ARRAY_LEN(button_array); ++i) {
+		if (CheckCollisionPointRec(mouse_pos, button_array[i].rec) || index == i) {
+			button_array[i].button_color = ORANGE;
+		}
+	}
+	for (int i = 0; i < (int)ARRAY_LEN(button_array); ++i) {
+		render_button(button_array[i]);
+	}
 }
 
 // :button with side effect
@@ -359,7 +392,7 @@ void interactive_button (GameState *game, GameScreen screen_type, Vector2 mouse_
 		draw_button(str, 40, GREEN, WHITE, (Vector2){.x = rec.x, .y = rec.y});
 }
 
-void draw_text_middle(const char* str, const int size, Color color) {
+void draw_text_center(const char* str, const int size, Color color) {
 	int str_width = MeasureText(str, size);
 	DrawText(str, CANVAS_WIDTH/2-str_width/2, CANVAS_HEIGHT/2 - size/2, size, color);
 }
@@ -368,20 +401,28 @@ void draw_text_middle(const char* str, const int size, Color color) {
 // :start_screen
 void start_screen(GameState *game) {
 	ClearBackground(DARKBLUE);
-	draw_text_middle("Angry Cubes", 100, RED);
+	draw_text_center("Angry Cubes", 100, RED);
 	Vector2 mouse_pos = GetMousePosition();
 	const int padding = 50;
-	Rectangle start_rec = {.x = CANVAS_WIDTH/2, .y = CANVAS_HEIGHT/2, .width = 100, .height = 40};
+	const int x_origin = CANVAS_WIDTH/2;
+	const int y_origin = CANVAS_HEIGHT/2 + 100;
+	Rectangle start_rec = {.x = x_origin, .y = y_origin, .width = 100, .height = 40};
 	interactive_button(game, GAME_SCREEN, mouse_pos, start_rec, "start");
 
-	Rectangle test_rec = {.x = CANVAS_WIDTH/2, .y = CANVAS_HEIGHT/2 + padding, .width = 100, .height = 40};
+	Rectangle test_rec = {.x = x_origin, .y = y_origin + padding, .width = 100, .height = 40};
 	interactive_button(game, TEST_SCREEN, mouse_pos, test_rec, "test");
 
-	Rectangle end_rec = {.x = CANVAS_WIDTH/2, .y = CANVAS_HEIGHT/2 + padding*2, .width = 100, .height = 40};
-	interactive_button(game, END_SCREEN, mouse_pos, end_rec, "quit");
+	Rectangle end_rec = {.x = x_origin, .y = y_origin + padding*2, .width = 100, .height = 40};
+	interactive_button(game, QUIT_GAME, mouse_pos, end_rec, "quit");
+
+	Rectangle rec_array[3] = {start_rec, test_rec, end_rec};
+	static int index = 0;
+	if (IsKeyPressed(KEY_J)) {
+		index = (index + 1) % sizeof(rec_array);
+	}
 }
 
-void render(GameState *game) {
+void render(GameState *game, bool *game_over) {
 	BeginDrawing();
 	ClearBackground(GetColor(BACKGROUND));
 
@@ -391,18 +432,23 @@ void render(GameState *game) {
 			start_screen(game);
 			break;
 		case TEST_SCREEN:
-			test_screen();
+			test_screen(game);
 			break;
 		case GAME_SCREEN:
 			HideCursor();
+			ClearBackground(DARKGREEN);
 			game_update(game);
 			raycast(game);
 			break;
 		case END_SCREEN:
 			game_over_screen(game);
 			break;
+		case QUIT_GAME:
+			*game_over = true;
 	}
-	// DrawFPS(10, 10);
+	#ifdef DEBUG
+	DrawFPS(10, 10);
 	draw_minimap(game);
+	#endif
 	EndDrawing();
 }

@@ -22,6 +22,7 @@
 #define MAP_COUNT 16
 #define TEXTURE_COUNT 16
 #define MAX_ARRAY_COUNT 32
+#define ARRAY_LEN(a) (sizeof(a)/sizeof(a[0]))
 
 enum texture_enum {
 	MAP_0_TEXTURE,
@@ -51,6 +52,7 @@ typedef enum {
 	GAME_SCREEN,
 	TEST_SCREEN,
 	END_SCREEN,
+	QUIT_GAME,
 } GameScreen;
 
 typedef struct {
@@ -81,4 +83,4 @@ typedef struct {
 void array_fill(Map *map, StaticArray *array, int value);
 void draw_texture(Texture2D texture, float tx, float dest_x, float dest_y, float dest_height, Color color);
 void interactive_button (GameState *game, GameScreen screen_type, Vector2 mouse_pos, Rectangle rec, const char *str);
-void draw_text_middle(const char* str, const int size, Color color);
+void draw_text_center(const char* str, const int size, Color color);

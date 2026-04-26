@@ -4,7 +4,7 @@
 #ifdef HOT_RELOAD
 void (*render)(GameState *game);
 #else
-void render(GameState *game);
+void render(GameState *game, bool *game_over);
 #endif
 
 Map maps[MAP_COUNT] = {
@@ -119,7 +119,8 @@ int main(void)
 	game_init();
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
 
-	while (!WindowShouldClose()) {
+	bool game_over;
+	while (!WindowShouldClose() && !game_over) {
 		#ifdef HOT_RELOAD
 		if (IsKeyPressed(KEY_R))
 		{
@@ -132,7 +133,7 @@ int main(void)
 				fprintf(stderr, "%s\n", dlerror());
 		}
 		#endif
-		render(&game);
+		render(&game, &game_over);
 	}
 	game_shutdown();
 	CloseWindow();

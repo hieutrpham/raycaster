@@ -13,7 +13,7 @@ $ ./main
 ## TODO:
  - [x] implement minimap. very scuffed version
     - [] stop showing minimap when dead
- - [] start screen
+ - [x] start screen
  - [] continue screen to the next map
  - [] end screen to restart the game
  - [x] textures for enemy and friend
