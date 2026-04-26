@@ -3,7 +3,7 @@
 #ifdef HOT_RELOAD
 void (*render)(GameState *game);
 #else
-void render(GameState *game);
+void render(GameState *game, bool *game_over);
 #endif
 
 Map maps[MAP_COUNT] = {
@@ -114,12 +114,12 @@ void game_shutdown() {
 
 int main(void)
 {
-	InitWindow(CANVAS_WIDTH, CANVAS_HEIGHT, "Raycaster");
+	InitWindow(CANVAS_WIDTH, CANVAS_HEIGHT, "Angry Cubes");
 	game_init();
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-	HideCursor();
 
-	while (!WindowShouldClose()) {
+	bool game_over;
+	while (!WindowShouldClose() && !game_over) {
 		#ifdef HOT_RELOAD
 		if (IsKeyPressed(KEY_R))
 		{
@@ -132,7 +132,7 @@ int main(void)
 				fprintf(stderr, "%s\n", dlerror());
 		}
 		#endif
-		render(&game);
+		render(&game, &game_over);
 	}
 	game_shutdown();
 	CloseWindow();
