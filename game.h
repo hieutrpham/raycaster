@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdlib.h>
+#include "raylib.h"
 #include "raymath.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -8,7 +9,6 @@
 #include <string.h>
 #include <sys/types.h>
 #include <dlfcn.h>
-#include "raylib.h"
 #include <math.h>
 
 #define MOUSE_SENSITIVITY 0.001f
@@ -79,6 +79,14 @@ typedef struct {
 	MemberInt items[MAX_ARRAY_COUNT];
 	int count;
 } StaticArray;
+
+typedef struct {
+	Rectangle rec;
+	Color button_color;
+	const char *name;
+	int font_size;
+	bool is_activated;
+} Button;
 
 void array_fill(Map *map, StaticArray *array, int value);
 void draw_texture(Texture2D texture, float tx, float dest_x, float dest_y, float dest_height, Color color);

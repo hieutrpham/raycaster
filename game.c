@@ -1,6 +1,5 @@
-#include "raylib.h"
-#include <raymath.h>
 #include "game.h"
+#include "raylib.h"
 
 static const float ray_delta = FOV * DR/CANVAS_WIDTH;
 
@@ -236,7 +235,7 @@ void enemy_update(GameState *game) {
 					game->screen_type = END_SCREEN;
 					return;
 				}
-				int next_x, next_y;
+				int next_x = 0, next_y = 0;
 				enemy_old_pos.items[enemy_old_pos.count++].value = map_pos;
 
 				if (x < player_pos_x)
@@ -334,15 +333,6 @@ void draw_button(const char *text, int fontSize, Color color_rec, Color color_te
 	DrawText(text, origin.x, origin.y, fontSize, color_text);
 }
 
-// :test
-typedef struct {
-	Rectangle rec;
-	Color button_color;
-	const char *name;
-	int font_size;
-	bool is_activated;
-} Button;
-
 Button init_button(const char *name, int font_size, Vector2 origin, Color color) {
 	Button b = {0};
 	int text_width = MeasureText(name, font_size);
@@ -358,8 +348,8 @@ void render_button(Button b) {
 	DrawText(b.name, b.rec.x, b.rec.y, b.font_size, WHITE);
 }
 
+// :test
 void test_screen(GameState *game) {
-	(void)game;
 	ClearBackground(DARKPURPLE);
 	Vector2 mouse_pos = GetMousePosition();
 	const int padding = 50;
@@ -369,23 +359,26 @@ void test_screen(GameState *game) {
 	Button end_button = init_button("end", 40, (Vector2){origin.x, origin.y + padding*2}, GREEN);
 	static int index = -1;
 	Button button_array[] = {start_button, test_button, end_button};
+	int button_array_len = ARRAY_LEN(button_array);
+
 	if (IsKeyPressed(KEY_J)) {
 		HideCursor();
-		index = (index + 1) % ARRAY_LEN(button_array);
+		index = (index + 1) % button_array_len;
 	}
-	for (int i = 0; i < (int)ARRAY_LEN(button_array); ++i) {
+	for (int i = 0; i < button_array_len; ++i) {
 		if (CheckCollisionPointRec(mouse_pos, button_array[i].rec) || index == i) {
 			button_array[i].button_color = ORANGE;
 			if (IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
 				button_array[i].is_activated = true;
 		}
 	}
-	for (int i = 0; i < (int)ARRAY_LEN(button_array); ++i) {
+	for (int i = 0; i < button_array_len; ++i) {
 		render_button(button_array[i]);
 	}
-	for (int i = 0; i < (int)ARRAY_LEN(button_array); ++i) {
+	for (int i = 0; i < button_array_len; ++i) {
 		if (button_array[i].is_activated) {
-			game->screen_type = START_SCREEN;
+			if (strcmp(button_array[i].name, "start") == 0)
+				game->screen_type = GAME_SCREEN;
 		}
 	}
 }
@@ -409,25 +402,40 @@ void draw_text_center(const char* str, const int size, Color color) {
 // TODO: add support for buttons navigation
 // :start_screen
 void start_screen(GameState *game) {
-	ClearBackground(DARKBLUE);
-	draw_text_center("Angry Cubes", 100, RED);
+	ClearBackground(DARKGREEN);
 	Vector2 mouse_pos = GetMousePosition();
 	const int padding = 50;
-	const int x_origin = CANVAS_WIDTH/2;
-	const int y_origin = CANVAS_HEIGHT/2 + 100;
-	Rectangle start_rec = {.x = x_origin, .y = y_origin, .width = 100, .height = 40};
-	interactive_button(game, GAME_SCREEN, mouse_pos, start_rec, "start");
+	Vector2 origin = {CANVAS_WIDTH/2, CANVAS_HEIGHT/2};
+	Button start_button = init_button("start", 40, origin, GREEN);
+	Button test_button = init_button("test", 40, (Vector2){origin.x, origin.y + padding}, GREEN);
+	Button end_button = init_button("end", 40, (Vector2){origin.x, origin.y + padding*2}, GREEN);
+	static int index = -1;
+	Button button_array[] = {start_button, test_button, end_button};
+	int button_array_len = ARRAY_LEN(button_array);
 
-	Rectangle test_rec = {.x = x_origin, .y = y_origin + padding, .width = 100, .height = 40};
-	interactive_button(game, TEST_SCREEN, mouse_pos, test_rec, "test");
-
-	Rectangle end_rec = {.x = x_origin, .y = y_origin + padding*2, .width = 100, .height = 40};
-	interactive_button(game, QUIT_GAME, mouse_pos, end_rec, "quit");
-
-	Rectangle rec_array[3] = {start_rec, test_rec, end_rec};
-	static int index = 0;
 	if (IsKeyPressed(KEY_J)) {
-		index = (index + 1) % sizeof(rec_array);
+		HideCursor();
+		index = (index + 1) % button_array_len;
+	}
+	for (int i = 0; i < button_array_len; ++i) {
+		if (CheckCollisionPointRec(mouse_pos, button_array[i].rec) || index == i) {
+			button_array[i].button_color = ORANGE;
+			if (IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+				button_array[i].is_activated = true;
+		}
+	}
+	for (int i = 0; i < button_array_len; ++i) {
+		render_button(button_array[i]);
+	}
+	for (int i = 0; i < button_array_len; ++i) {
+		if (button_array[i].is_activated) {
+			if (strcmp(button_array[i].name, "start") == 0)
+				game->screen_type = GAME_SCREEN;
+			if (strcmp(button_array[i].name, "test") == 0)
+				game->screen_type = TEST_SCREEN;
+			if (strcmp(button_array[i].name, "end") == 0)
+				game->screen_type = QUIT_GAME;
+		}
 	}
 }
 
