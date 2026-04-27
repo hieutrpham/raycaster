@@ -351,36 +351,11 @@ void render_button(Button b) {
 // :test
 void test_screen(GameState *game) {
 	ClearBackground(DARKPURPLE);
-	Vector2 mouse_pos = GetMousePosition();
-	const int padding = 50;
-	Vector2 origin = {CANVAS_WIDTH/2, CANVAS_HEIGHT/2};
-	Button start_button = init_button("start", 40, origin, GREEN);
-	Button test_button = init_button("test", 40, (Vector2){origin.x, origin.y + padding}, GREEN);
-	Button end_button = init_button("end", 40, (Vector2){origin.x, origin.y + padding*2}, GREEN);
-	static int index = -1;
-	Button button_array[] = {start_button, test_button, end_button};
-	int button_array_len = ARRAY_LEN(button_array);
-
-	if (IsKeyPressed(KEY_J)) {
-		HideCursor();
-		index = (index + 1) % button_array_len;
-	}
-	for (int i = 0; i < button_array_len; ++i) {
-		if (CheckCollisionPointRec(mouse_pos, button_array[i].rec) || index == i) {
-			button_array[i].button_color = ORANGE;
-			if (IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-				button_array[i].is_activated = true;
-		}
-	}
-	for (int i = 0; i < button_array_len; ++i) {
-		render_button(button_array[i]);
-	}
-	for (int i = 0; i < button_array_len; ++i) {
-		if (button_array[i].is_activated) {
-			if (strcmp(button_array[i].name, "start") == 0)
-				game->screen_type = GAME_SCREEN;
-		}
-	}
+	Texture2D test = game->enemy_texture;
+	Rectangle frameRec = {0.0f, 0.0f, (float)test.width/6, (float)test.height};
+    Vector2 position = { 350.0f, 280.0f };
+	DrawTexture(test, 15, 40, WHITE);
+	DrawTextureRec(game->enemy_texture, frameRec, position, WHITE);
 }
 
 // :button with side effect
@@ -399,10 +374,14 @@ void draw_text_center(const char* str, const int size, Color color) {
 	DrawText(str, CANVAS_WIDTH/2-str_width/2, CANVAS_HEIGHT/2 - size/2, size, color);
 }
 
-// TODO: add support for buttons navigation
 // :start_screen
 void start_screen(GameState *game) {
 	ClearBackground(DARKGREEN);
+	static bool cursor_show = true;
+
+	if (cursor_show) ShowCursor();
+	else HideCursor();
+
 	Vector2 mouse_pos = GetMousePosition();
 	const int padding = 50;
 	Vector2 origin = {CANVAS_WIDTH/2, CANVAS_HEIGHT/2};
@@ -414,7 +393,7 @@ void start_screen(GameState *game) {
 	int button_array_len = ARRAY_LEN(button_array);
 
 	if (IsKeyPressed(KEY_J)) {
-		HideCursor();
+		cursor_show = false;
 		index = (index + 1) % button_array_len;
 	}
 	for (int i = 0; i < button_array_len; ++i) {
@@ -445,7 +424,6 @@ void render(GameState *game, bool *game_over) {
 
 	switch (game->screen_type) {
 		case START_SCREEN:
-			ShowCursor();
 			start_screen(game);
 			break;
 		case TEST_SCREEN:

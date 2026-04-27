@@ -93,7 +93,8 @@ void game_init() {
 
 	textures[MAP_0_TEXTURE] = LoadTexture("./assets/Bookshelf_64.png");
 	textures[MAP_1_TEXTURE] = LoadTexture("./assets/Grass_with_Flowers_64.png");
-	textures[ENEMY_TEXTURE] = LoadTexture("./assets/SPace_64.png");
+	// textures[ENEMY_TEXTURE] = LoadTexture("./assets/SPace_64.png");
+	textures[ENEMY_TEXTURE] = LoadTexture("./assets/scarfy.png");
 	textures[FRIEND_TEXTURE] = LoadTexture("./assets/chairman_128.png");
 
 	for (int i = 0; i < MAP_COUNT; ++i) {
