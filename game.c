@@ -340,7 +340,7 @@ typedef struct {
 	Color button_color;
 	const char *name;
 	int font_size;
-	bool is_hovered;
+	bool is_activated;
 } Button;
 
 Button init_button(const char *name, int font_size, Vector2 origin, Color color) {
@@ -369,15 +369,24 @@ void test_screen(GameState *game) {
 	Button end_button = init_button("end", 40, (Vector2){origin.x, origin.y + padding*2}, GREEN);
 	static int index = -1;
 	Button button_array[] = {start_button, test_button, end_button};
-	if (IsKeyPressed(KEY_J))
+	if (IsKeyPressed(KEY_J)) {
+		HideCursor();
 		index = (index + 1) % ARRAY_LEN(button_array);
+	}
 	for (int i = 0; i < (int)ARRAY_LEN(button_array); ++i) {
 		if (CheckCollisionPointRec(mouse_pos, button_array[i].rec) || index == i) {
 			button_array[i].button_color = ORANGE;
+			if (IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+				button_array[i].is_activated = true;
 		}
 	}
 	for (int i = 0; i < (int)ARRAY_LEN(button_array); ++i) {
 		render_button(button_array[i]);
+	}
+	for (int i = 0; i < (int)ARRAY_LEN(button_array); ++i) {
+		if (button_array[i].is_activated) {
+			game->screen_type = START_SCREEN;
+		}
 	}
 }
 
