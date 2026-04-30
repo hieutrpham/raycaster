@@ -352,21 +352,30 @@ void render_button(Button b) {
 void test_screen(GameState *game) {
 	ClearBackground(DARKPURPLE);
 	Texture2D test = game->enemy_texture;
-	Rectangle frameRec = {0.0f, 0.0f, (float)test.width/6, (float)test.height};
-    Vector2 position = { 350.0f, 280.0f };
-	DrawTexture(test, 15, 40, WHITE);
-	DrawTextureRec(game->enemy_texture, frameRec, position, WHITE);
-}
+    Rectangle dest = { CANVAS_WIDTH/2, CANVAS_HEIGHT/2, 200, 200 };
 
-// :button with side effect
-void interactive_button (GameState *game, GameScreen screen_type, Vector2 mouse_pos, Rectangle rec, const char *str) {
-	if (CheckCollisionPointRec(mouse_pos, rec)) {
-		draw_button(str, 40, ORANGE, WHITE, (Vector2){.x = rec.x, .y = rec.y});
-		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-			game->screen_type = screen_type;
+	#define nr_of_spites 8
+	
+	static float frame_x = 0.0f;
+	Rectangle frameRec = {frame_x, 0.0f, (float)test.width/nr_of_spites, (float)test.height/6};
+	const float frameDuration = 1.0f/5.0f; // (1.0 / 8 fps)
+	static float timer = 0.0f;
+	static int currentFrame = 3;
+
+	// Inside your while loop:
+	timer += GetFrameTime(); // Returns time in seconds since last frame (e.g., 0.016s)
+
+	if (timer >= frameDuration)
+	{
+		timer = 0.0f; // Reset the clock
+		currentFrame++;
+		if (currentFrame >= nr_of_spites)
+			currentFrame = 3;
+		frame_x = (float)currentFrame * (float)test.width/nr_of_spites;
 	}
-	else
-		draw_button(str, 40, GREEN, WHITE, (Vector2){.x = rec.x, .y = rec.y});
+
+	DrawTexture(test, CANVAS_WIDTH/2 - test.width/2, 40, WHITE);
+	DrawTexturePro(test, frameRec, dest, (Vector2){0,0}, 0, WHITE);
 }
 
 void draw_text_center(const char* str, const int size, Color color) {
@@ -376,7 +385,7 @@ void draw_text_center(const char* str, const int size, Color color) {
 
 // :start_screen
 void start_screen(GameState *game) {
-	ClearBackground(DARKGREEN);
+	ClearBackground(DARKPURPLE);
 	static bool cursor_show = true;
 
 	if (cursor_show) ShowCursor();

@@ -52,7 +52,7 @@ fclean: clean
 re: fclean static
 
 debug:
-	$(MAKE) CFLAGS="$(CFLAGS) -g" re
+	$(MAKE) CFLAGS="$(CFLAGS) -g -DDEBUG" re
 
 TEST_DIR = ./tests
 test:
