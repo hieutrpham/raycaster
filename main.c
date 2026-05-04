@@ -1,12 +1,6 @@
 #include "game.h"
 #include "raylib.h"
 
-#ifdef HOT_RELOAD
-void (*render)(GameState *game);
-#else
-void render(GameState *game, bool *game_over);
-#endif
-
 Map maps[MAP_COUNT] = {
 #define P (0xff) // denote player on the map
 {
@@ -83,29 +77,24 @@ Texture2D textures[TEXTURE_COUNT];
 GameState game = {};
 
 void game_init() {
-#ifdef HOT_RELOAD
-	char *libplug = "./libplug.so";
-	void *lib = dlopen(libplug, RTLD_NOW);
-	if (!lib)
-		return fprintf(stderr, "%s\n", dlerror());
-	render = dlsym(lib, "render");
-#endif
 
 	textures[MAP_0_TEXTURE] = LoadTexture("./assets/Bookshelf_64.png");
 	textures[MAP_1_TEXTURE] = LoadTexture("./assets/Grass_with_Flowers_64.png");
-	// textures[ENEMY_TEXTURE] = LoadTexture("./assets/SPace_64.png");
-	Image enemy = LoadImage("./assets/Fire.png");
-	ImageColorReplace(&enemy, BLACK, BLANK);
-	textures[ENEMY_TEXTURE] = LoadTextureFromImage(enemy);
+	textures[ENEMY_TEXTURE] = LoadTexture("./assets/SPace_64.png");
 
 	textures[FRIEND_TEXTURE] = LoadTexture("./assets/chairman_128.png");
+	textures[4] = LoadTexture("./assets/scarfy.png");
+	
+	// Image enemy = LoadImage("./assets/Fire.png");
+	// ImageColorReplace(&enemy, BLACK, BLANK);
+	// textures[ENEMY_TEXTURE] = LoadTextureFromImage(enemy);
 
-	for (int i = 0; i < MAP_COUNT; ++i) {
+	for (int i = 0; i < MAP_COUNT; ++i)
 		game.maps[i] = maps[i];
-	}
 
 	game.enemy_texture = textures[ENEMY_TEXTURE];
 	game.friend_texture = textures[FRIEND_TEXTURE];
+	game.test_texture = textures[4];
 	game.maps[0].wall_texture = textures[MAP_0_TEXTURE];
 	game.maps[1].wall_texture = textures[MAP_1_TEXTURE];
 	game.current_map_index = 0;
@@ -125,18 +114,6 @@ int main(void)
 
 	bool game_over;
 	while (!WindowShouldClose() && !game_over) {
-		#ifdef HOT_RELOAD
-		if (IsKeyPressed(KEY_R))
-		{
-			dlclose(lib);
-			lib = dlopen(libplug, RTLD_NOW);
-			if (!lib)
-				return fprintf(stderr, "%s\n", dlerror());
-			render = dlsym(lib, "render");
-			if (!render)
-				fprintf(stderr, "%s\n", dlerror());
-		}
-		#endif
 		render(&game, &game_over);
 	}
 	game_shutdown();

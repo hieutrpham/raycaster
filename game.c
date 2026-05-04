@@ -6,7 +6,7 @@ static const float ray_delta = FOV * DR/CANVAS_WIDTH;
 // used in gameplay logic
 // check if the position is within the bounds of the map
 // return: true if in bound, false if not
-static bool is_wall (Vector2 pos, GameState *game) {
+static bool is_obstacle (Vector2 pos, GameState *game) {
 	Map map = game->maps[game->current_map_index];
 	int mp = (int)pos.y * map.map_width + (int)pos.x;
 	if (mp >= 0 && mp < map.map_width * map.map_height && (map.map[mp] == WALL || map.map[mp] == FRIEND))
@@ -159,14 +159,14 @@ void draw_texture(Texture2D texture, float tx, float dest_x, float dest_y, float
 
 static void update_player_pos(Vector2 new_pos, GameState *game) {
 	Player *player = &game->maps[game->current_map_index].player;
-	if (!is_wall(new_pos, game)) {
+	if (!is_obstacle(new_pos, game)) {
 		if ((int)new_pos.y != (int)player->pos.y || (int)new_pos.x != (int)player->pos.x)
 			player->has_moved = true;
 		player->pos = new_pos;
 	}
 }
-/* :player_update
- * */
+
+// :player_update
 static void update_player(GameState *game) {
 	Player *player = &game->maps[game->current_map_index].player;
 	float dt = GetFrameTime();
@@ -187,6 +187,13 @@ static void update_player(GameState *game) {
 		Vector2 new_dir = {-player->dir.y, player->dir.x};
 		Vector2 new_pos = Vector2Add(Vector2Scale(new_dir, SPEED*dt), player->pos);
 		update_player_pos(new_pos, game);
+	}
+	const float turn_angle = 0.005f;
+	if (IsKeyDown(KEY_RIGHT)) {
+		player->angle += turn_angle;
+	}
+	if (IsKeyDown(KEY_LEFT)) {
+		player->angle -= turn_angle;
 	}
 }
 
@@ -235,7 +242,7 @@ void enemy_update(GameState *game) {
 					game->screen_type = END_SCREEN;
 					return;
 				}
-				int next_x = 0, next_y = 0;
+				int next_x = x, next_y = y;
 				enemy_old_pos.items[enemy_old_pos.count++].value = map_pos;
 
 				if (x < player_pos_x)
@@ -253,27 +260,28 @@ void enemy_update(GameState *game) {
 			}
 		}
 	}
+	 // fill the old cells with space to indicate the enemy moved
 	for (int i = 0; i < enemy_old_pos.count; ++i) {
 		int new = enemy_old_pos.items[i].value;
 		if (new < 0 || new >= current_map->map_width * current_map->map_height)
 			continue;
 		map[new] = SPACE;
 	}
+	
+	// fill the new cells with new entity either enemy or friend
 	for (int i = 0; i < enemy_new_pos.count; ++i) {
 		int new = enemy_new_pos.items[i].value;
 		if (new < 0 || new >= current_map->map_width * current_map->map_height)
-			continue;
-		if (enemy_new_pos.items[i].count < 2 && enemy_new_pos.items[i].count >= 1)
+			continue; // enemy goes out of bound. stopping
+		if (enemy_new_pos.items[i].count == 1)
 			map[new] = ENEMY;
-		else if (enemy_new_pos.items[i].count >= 2) {
+		else if (enemy_new_pos.items[i].count >= 2)
 			map[new] = FRIEND;
-		}
 	}
 	current_map->player.has_moved = false;
 }
 
 /*:update logic for the game
- * - check for key inputs
  */
 void game_update(GameState *game) {
 	mouse_control(game);
@@ -348,34 +356,45 @@ void render_button(Button b) {
 	DrawText(b.name, b.rec.x, b.rec.y, b.font_size, WHITE);
 }
 
-// :test
-void test_screen(GameState *game) {
-	ClearBackground(DARKPURPLE);
-	Texture2D test = game->enemy_texture;
-    Rectangle dest = { CANVAS_WIDTH/2, CANVAS_HEIGHT/2, 200, 200 };
+// TODO: refactor animation functionality
+// params:
+// * Texture2D source key frames
+// * number of key frames
+// * frame duration
+// * Rectangle destination
+void animate(GameState *game) {
+	Texture2D test = game->test_texture;
+    Rectangle dest = { CANVAS_WIDTH/2, CANVAS_HEIGHT/2, 300, 300 };
 
-	#define nr_of_spites 8
+	const int nr_of_spites = 6;
 	
 	static float frame_x = 0.0f;
-	Rectangle frameRec = {frame_x, 0.0f, (float)test.width/nr_of_spites, (float)test.height/6};
-	const float frameDuration = 1.0f/5.0f; // (1.0 / 8 fps)
+	Rectangle frameRec = {frame_x, 0.0f, (float)test.width/nr_of_spites, (float)test.height};
+
+	const float frameDuration = 1.0f/5.0f; // 1 frame per frameDuration
 	static float timer = 0.0f;
-	static int currentFrame = 3;
+	static int currentFrame = 0;
 
-	// Inside your while loop:
-	timer += GetFrameTime(); // Returns time in seconds since last frame (e.g., 0.016s)
+	timer += GetFrameTime();
 
+	// change frame after frameDuration has passed
 	if (timer >= frameDuration)
 	{
 		timer = 0.0f; // Reset the clock
 		currentFrame++;
 		if (currentFrame >= nr_of_spites)
-			currentFrame = 3;
+			currentFrame = 0;
 		frame_x = (float)currentFrame * (float)test.width/nr_of_spites;
 	}
 
 	DrawTexture(test, CANVAS_WIDTH/2 - test.width/2, 40, WHITE);
 	DrawTexturePro(test, frameRec, dest, (Vector2){0,0}, 0, WHITE);
+}
+
+// :test
+void test_screen(GameState *game) {
+	ClearBackground(DARKPURPLE);
+	animate(game);
 }
 
 void draw_text_center(const char* str, const int size, Color color) {

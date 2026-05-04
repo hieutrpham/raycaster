@@ -59,6 +59,7 @@ typedef struct {
 	Map maps[MAP_COUNT];
 	Texture2D enemy_texture;
 	Texture2D friend_texture;
+	Texture2D test_texture;
 	int current_map_index;
 	GameScreen screen_type;
 } GameState;
@@ -92,3 +93,5 @@ void array_fill(Map *map, StaticArray *array, int value);
 void draw_texture(Texture2D texture, float tx, float dest_x, float dest_y, float dest_height, Color color);
 void interactive_button (GameState *game, GameScreen screen_type, Vector2 mouse_pos, Rectangle rec, const char *str);
 void draw_text_center(const char* str, const int size, Color color);
+void render(GameState *game, bool *game_over);
+
