@@ -1,13 +1,12 @@
-#include "raylib.h"
-#include <raymath.h>
 #include "game.h"
+#include "raylib.h"
 
 static const float ray_delta = FOV * DR/CANVAS_WIDTH;
 
 // used in gameplay logic
 // check if the position is within the bounds of the map
 // return: true if in bound, false if not
-static bool is_wall (Vector2 pos, GameState *game) {
+static bool is_obstacle (Vector2 pos, GameState *game) {
 	Map map = game->maps[game->current_map_index];
 	int mp = (int)pos.y * map.map_width + (int)pos.x;
 	if (mp >= 0 && mp < map.map_width * map.map_height && (map.map[mp] == WALL || map.map[mp] == FRIEND))
@@ -160,14 +159,14 @@ void draw_texture(Texture2D texture, float tx, float dest_x, float dest_y, float
 
 static void update_player_pos(Vector2 new_pos, GameState *game) {
 	Player *player = &game->maps[game->current_map_index].player;
-	if (!is_wall(new_pos, game)) {
+	if (!is_obstacle(new_pos, game)) {
 		if ((int)new_pos.y != (int)player->pos.y || (int)new_pos.x != (int)player->pos.x)
 			player->has_moved = true;
 		player->pos = new_pos;
 	}
 }
-/* :player_update
- * */
+
+// :player_update
 static void update_player(GameState *game) {
 	Player *player = &game->maps[game->current_map_index].player;
 	float dt = GetFrameTime();
@@ -188,6 +187,13 @@ static void update_player(GameState *game) {
 		Vector2 new_dir = {-player->dir.y, player->dir.x};
 		Vector2 new_pos = Vector2Add(Vector2Scale(new_dir, SPEED*dt), player->pos);
 		update_player_pos(new_pos, game);
+	}
+	const float turn_angle = 0.005f;
+	if (IsKeyDown(KEY_RIGHT)) {
+		player->angle += turn_angle;
+	}
+	if (IsKeyDown(KEY_LEFT)) {
+		player->angle -= turn_angle;
 	}
 }
 
@@ -255,27 +261,28 @@ void enemy_update(GameState *game) {
 			}
 		}
 	}
+	 // fill the old cells with space to indicate the enemy moved
 	for (int i = 0; i < enemy_old_pos.count; ++i) {
 		int new = enemy_old_pos.items[i].value;
 		if (new < 0 || new >= current_map->map_width * current_map->map_height)
 			continue;
 		map[new] = SPACE;
 	}
+	
+	// fill the new cells with new entity either enemy or friend
 	for (int i = 0; i < enemy_new_pos.count; ++i) {
 		int new = enemy_new_pos.items[i].value;
 		if (new < 0 || new >= current_map->map_width * current_map->map_height)
-			continue;
-		if (enemy_new_pos.items[i].count < 2 && enemy_new_pos.items[i].count >= 1)
+			continue; // enemy goes out of bound. stopping
+		if (enemy_new_pos.items[i].count == 1)
 			map[new] = ENEMY;
-		else if (enemy_new_pos.items[i].count >= 2) {
+		else if (enemy_new_pos.items[i].count >= 2)
 			map[new] = FRIEND;
-		}
 	}
 	current_map->player.has_moved = false;
 }
 
 /*:update logic for the game
- * - check for key inputs
  */
 void game_update(GameState *game) {
 	mouse_control(game);
@@ -335,15 +342,6 @@ void draw_button(const char *text, int fontSize, Color color_rec, Color color_te
 	DrawText(text, origin.x, origin.y, fontSize, color_text);
 }
 
-// :test
-typedef struct {
-	Rectangle rec;
-	Color button_color;
-	const char *name;
-	int font_size;
-	bool is_hovered;
-} Button;
-
 Button init_button(const char *name, int font_size, Vector2 origin, Color color) {
 	Button b = {0};
 	int text_width = MeasureText(name, font_size);
@@ -359,9 +357,60 @@ void render_button(Button b) {
 	DrawText(b.name, b.rec.x, b.rec.y, b.font_size, WHITE);
 }
 
+// TODO: refactor animation functionality
+// params:
+// * Texture2D source key frames
+// * number of key frames
+// * frame duration
+// * Rectangle destination
+void animate(GameState *game) {
+	Texture2D test = game->test_texture;
+    Rectangle dest = { CANVAS_WIDTH/2, CANVAS_HEIGHT/2, 300, 300 };
+
+	const int nr_of_spites = 6;
+	
+	static float frame_x = 0.0f;
+	Rectangle frameRec = {frame_x, 0.0f, (float)test.width/(float)nr_of_spites, (float)test.height};
+
+	const float frameDuration = 1.0f/5.0f; // 1 frame per frameDuration
+	static float timer = 0.0f;
+	static int currentFrame = 0;
+
+	timer += GetFrameTime();
+
+	// change frame after frameDuration has passed
+	if (timer >= frameDuration)
+	{
+		timer = 0.0f; // Reset the clock
+		currentFrame++;
+		if (currentFrame >= nr_of_spites)
+			currentFrame = 0;
+		frame_x = (float)currentFrame * (float)test.width/nr_of_spites;
+	}
+
+	DrawTexture(test, CANVAS_WIDTH/2 - test.width/2, 40, WHITE);
+	DrawTexturePro(test, frameRec, dest, (Vector2){0,0}, 0, WHITE);
+}
+
+// :test
 void test_screen(GameState *game) {
-	(void)game;
 	ClearBackground(DARKPURPLE);
+	animate(game);
+}
+
+void draw_text_center(const char* str, const int size, Color color) {
+	int str_width = MeasureText(str, size);
+	DrawText(str, CANVAS_WIDTH/2-str_width/2, CANVAS_HEIGHT/2 - size/2, size, color);
+}
+
+// :start_screen
+void start_screen(GameState *game) {
+	ClearBackground(DARKPURPLE);
+	static bool cursor_show = true;
+
+	if (cursor_show) ShowCursor();
+	else HideCursor();
+
 	Vector2 mouse_pos = GetMousePosition();
 	const int padding = 50;
 	Vector2 origin = {CANVAS_WIDTH/2, CANVAS_HEIGHT/2};
@@ -370,56 +419,31 @@ void test_screen(GameState *game) {
 	Button end_button = init_button("end", 40, (Vector2){origin.x, origin.y + padding*2}, GREEN);
 	static int index = -1;
 	Button button_array[] = {start_button, test_button, end_button};
-	if (IsKeyPressed(KEY_J))
-		index = (index + 1) % ARRAY_LEN(button_array);
-	for (int i = 0; i < (int)ARRAY_LEN(button_array); ++i) {
+	int button_array_len = ARRAY_LEN(button_array);
+
+	if (IsKeyPressed(KEY_J)) {
+		cursor_show = false;
+		index = (index + 1) % button_array_len;
+	}
+	for (int i = 0; i < button_array_len; ++i) {
 		if (CheckCollisionPointRec(mouse_pos, button_array[i].rec) || index == i) {
 			button_array[i].button_color = ORANGE;
+			if (IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+				button_array[i].is_activated = true;
 		}
 	}
-	for (int i = 0; i < (int)ARRAY_LEN(button_array); ++i) {
+	for (int i = 0; i < button_array_len; ++i) {
 		render_button(button_array[i]);
 	}
-}
-
-// :button with side effect
-void interactive_button (GameState *game, GameScreen screen_type, Vector2 mouse_pos, Rectangle rec, const char *str) {
-	if (CheckCollisionPointRec(mouse_pos, rec)) {
-		draw_button(str, 40, ORANGE, WHITE, (Vector2){.x = rec.x, .y = rec.y});
-		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-			game->screen_type = screen_type;
-	}
-	else
-		draw_button(str, 40, GREEN, WHITE, (Vector2){.x = rec.x, .y = rec.y});
-}
-
-void draw_text_center(const char* str, const int size, Color color) {
-	int str_width = MeasureText(str, size);
-	DrawText(str, CANVAS_WIDTH/2-str_width/2, CANVAS_HEIGHT/2 - size/2, size, color);
-}
-
-// TODO: add support for buttons navigation
-// :start_screen
-void start_screen(GameState *game) {
-	ClearBackground(DARKBLUE);
-	draw_text_center("Angry Cubes", 100, RED);
-	Vector2 mouse_pos = GetMousePosition();
-	const int padding = 50;
-	const int x_origin = CANVAS_WIDTH/2;
-	const int y_origin = CANVAS_HEIGHT/2 + 100;
-	Rectangle start_rec = {.x = x_origin, .y = y_origin, .width = 100, .height = 40};
-	interactive_button(game, GAME_SCREEN, mouse_pos, start_rec, "start");
-
-	Rectangle test_rec = {.x = x_origin, .y = y_origin + padding, .width = 100, .height = 40};
-	interactive_button(game, TEST_SCREEN, mouse_pos, test_rec, "test");
-
-	Rectangle end_rec = {.x = x_origin, .y = y_origin + padding*2, .width = 100, .height = 40};
-	interactive_button(game, QUIT_GAME, mouse_pos, end_rec, "quit");
-
-	Rectangle rec_array[3] = {start_rec, test_rec, end_rec};
-	static int index = 0;
-	if (IsKeyPressed(KEY_J)) {
-		index = (index + 1) % sizeof(rec_array);
+	for (int i = 0; i < button_array_len; ++i) {
+		if (button_array[i].is_activated) {
+			if (strcmp(button_array[i].name, "start") == 0)
+				game->screen_type = GAME_SCREEN;
+			if (strcmp(button_array[i].name, "test") == 0)
+				game->screen_type = TEST_SCREEN;
+			if (strcmp(button_array[i].name, "end") == 0)
+				game->screen_type = QUIT_GAME;
+		}
 	}
 }
 
@@ -429,7 +453,6 @@ void render(GameState *game, bool *game_over) {
 
 	switch (game->screen_type) {
 		case START_SCREEN:
-			ShowCursor();
 			start_screen(game);
 			break;
 		case TEST_SCREEN:

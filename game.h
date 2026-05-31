@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdlib.h>
-#include "raylib.h" // include raylib before any other modules to avoid redefinition
+#include "raylib.h"
 #include "raymath.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -59,6 +59,7 @@ typedef struct {
 	Map maps[MAP_COUNT];
 	Texture2D enemy_texture;
 	Texture2D friend_texture;
+	Texture2D test_texture;
 	int current_map_index;
 	GameScreen screen_type;
 } GameState;
@@ -80,7 +81,17 @@ typedef struct {
 	int count;
 } StaticArray;
 
+typedef struct {
+	Rectangle rec;
+	Color button_color;
+	const char *name;
+	int font_size;
+	bool is_activated;
+} Button;
+
 void array_fill(Map *map, StaticArray *array, int value);
 void draw_texture(Texture2D texture, float tx, float dest_x, float dest_y, float dest_height, Color color);
 void interactive_button (GameState *game, GameScreen screen_type, Vector2 mouse_pos, Rectangle rec, const char *str);
 void draw_text_center(const char* str, const int size, Color color);
+void render(GameState *game, bool *game_over);
+
