@@ -369,7 +369,7 @@ void animate(GameState *game) {
 	const int nr_of_spites = 6;
 	
 	static float frame_x = 0.0f;
-	Rectangle frameRec = {frame_x, 0.0f, (float)test.width/nr_of_spites, (float)test.height};
+	Rectangle frameRec = {frame_x, 0.0f, (float)test.width/(float)nr_of_spites, (float)test.height};
 
 	const float frameDuration = 1.0f/5.0f; // 1 frame per frameDuration
 	static float timer = 0.0f;

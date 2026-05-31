@@ -3,7 +3,7 @@
 
 # whitelist directory
 !*/
-!./assets/*
+!assets/*
 
 # whitelist hpp, cpp
 !*.*pp
