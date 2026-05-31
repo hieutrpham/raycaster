@@ -242,7 +242,8 @@ void enemy_update(GameState *game) {
 					game->screen_type = END_SCREEN;
 					return;
 				}
-				int next_x = x, next_y = y;
+				int next_x = x;
+				int next_y = y;
 				enemy_old_pos.items[enemy_old_pos.count++].value = map_pos;
 
 				if (x < player_pos_x)

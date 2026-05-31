@@ -1,5 +1,4 @@
 #include "game.h"
-#include "raylib.h"
 
 Map maps[MAP_COUNT] = {
 #define P (0xff) // denote player on the map
